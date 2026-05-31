@@ -85,6 +85,56 @@ class PiggyDetailScreen extends StatelessWidget {
     );
   }
 
+  Future<void> showBreakAnimation(BuildContext context) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0.5, end: 1.2),
+              duration: const Duration(milliseconds: 700),
+              builder: (context, scale, child) {
+                return Transform.scale(
+                  scale: scale,
+                  child: const Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        '💥🐷',
+                        style: TextStyle(fontSize: 64),
+                      ),
+                      SizedBox(height: 12),
+                      Text(
+                        'Piggy đã được đập!',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+        );
+      },
+    );
+
+    await Future.delayed(const Duration(milliseconds: 1200));
+
+    if (context.mounted) {
+      Navigator.pop(context);
+    }
+  }
+
   void showBreakPiggyDialog(BuildContext context) {
     final missingAmount = piggy.targetAmount - piggy.currentAmount;
 
@@ -130,9 +180,11 @@ class PiggyDetailScreen extends StatelessWidget {
               child: const Text('Hủy'),
             ),
             ElevatedButton(
-              onPressed: () {
+              onPressed: () async {
                 Navigator.pop(context);
-                Navigator.pop(context);
+                await showBreakAnimation(context);
+                final brokenPiggy = piggy.copyWith(isBroken: true);
+                Navigator.pop(context, brokenPiggy);
               },
               child: const Text('Đập heo'),
             ),
@@ -249,7 +301,20 @@ class PiggyDetailScreen extends StatelessWidget {
 
             const SizedBox(height: 20),
 
-            if (piggy.isLocked)
+            if (piggy.isBroken)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: const Text(
+                  'Piggy này đã được đập. Bạn không thể tiếp tục bỏ tiền vào nữa.',
+                  textAlign: TextAlign.center,
+                ),
+              )
+            else if (piggy.isLocked)
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
@@ -269,7 +334,7 @@ class PiggyDetailScreen extends StatelessWidget {
               width: double.infinity,
               height: 52,
               child: ElevatedButton.icon(
-                onPressed: piggy.isLocked
+                onPressed: (piggy.isLocked || piggy.isBroken)
                     ? null
                     : () {
                   showAddMoneyDialog(context);

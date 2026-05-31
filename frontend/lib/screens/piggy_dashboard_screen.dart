@@ -21,6 +21,7 @@ class _PiggyDashboardScreenState extends State<PiggyDashboardScreen> {
       startDate: DateTime(2026, 5, 1),
       endDate: DateTime(2026, 9, 1),
       note: 'Tiết kiệm để mua laptop học Flutter',
+      isBroken: false,
     ),
     Piggy(
       id: 2,
@@ -30,6 +31,7 @@ class _PiggyDashboardScreenState extends State<PiggyDashboardScreen> {
       startDate: DateTime(2026, 5, 1),
       endDate: DateTime(2026, 7, 1),
       note: 'Du lịch cùng bạn bè',
+      isBroken: false,
     ),
     Piggy(
       id: 3,
@@ -39,6 +41,7 @@ class _PiggyDashboardScreenState extends State<PiggyDashboardScreen> {
       startDate: DateTime(2026, 1, 1),
       endDate: DateTime(2026, 5, 1),
       note: 'Dự phòng khi cần thiết',
+      isBroken: false,
     ),
   ];
 
@@ -47,6 +50,63 @@ class _PiggyDashboardScreenState extends State<PiggyDashboardScreen> {
       RegExp(r'(\d)(?=(\d{3})+(?!\d))'),
           (match) => '${match[1]}.',
     )}đ';
+  }
+
+  Future<void> showBreakAnimation(BuildContext context) async {
+    await showGeneralDialog(
+      context: context,
+      barrierDismissible: false,
+      barrierLabel: 'Break Piggy',
+      transitionDuration: const Duration(milliseconds: 300),
+      pageBuilder: (context, animation, secondaryAnimation) {
+        return const SizedBox.shrink();
+      },
+      transitionBuilder: (context, animation, secondaryAnimation, child) {
+        return Opacity(
+          opacity: animation.value,
+          child: Center(
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0.6, end: 1.2),
+              duration: const Duration(milliseconds: 800),
+              builder: (context, scale, child) {
+                return Transform.scale(
+                  scale: scale,
+                  child: Material(
+                    color: Colors.transparent,
+                    child: Container(
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                      child: const Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            '💥🐷',
+                            style: TextStyle(fontSize: 64),
+                          ),
+                          SizedBox(height: 12),
+                          Text(
+                            'Piggy đã được đập!',
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        );
+      },
+    );
+
+    await Future.delayed(const Duration(milliseconds: 1000));
   }
 
   @override
@@ -169,8 +229,8 @@ class _PiggyDashboardScreenState extends State<PiggyDashboardScreen> {
 
                   return PiggyCard(
                     piggy: piggy,
-                    onTap: () {
-                      Navigator.push(
+                    onTap: () async {
+                      final updatedPiggy = await Navigator.push<Piggy>(
                         context,
                         MaterialPageRoute(
                           builder: (_) => PiggyDetailScreen(
@@ -178,6 +238,15 @@ class _PiggyDashboardScreenState extends State<PiggyDashboardScreen> {
                           ),
                         ),
                       );
+
+                      if (updatedPiggy != null) {
+                        setState(() {
+                          final index = piggies.indexWhere((item) => item.id == updatedPiggy.id);
+                          if (index != -1) {
+                            piggies[index] = updatedPiggy;
+                          }
+                        });
+                      }
                     },
                   );
                 },

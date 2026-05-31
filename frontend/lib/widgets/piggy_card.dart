@@ -19,6 +19,7 @@ class PiggyCard extends StatelessWidget {
   }
 
   Color getStatusColor() {
+    if (piggy.isBroken) return Colors.red;
     if (piggy.status == 'Đã khóa') return Colors.grey;
     if (piggy.status == 'Hoàn thành') return Colors.green;
     return Colors.pinkAccent;
@@ -42,11 +43,13 @@ class PiggyCard extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  const CircleAvatar(
-                    backgroundColor: Color(0xFFFFE4EF),
+                  CircleAvatar(
+                    backgroundColor: piggy.isBroken
+                        ? Colors.red.shade100
+                        : const Color(0xFFFFE4EF),
                     child: Icon(
-                      Icons.savings,
-                      color: Colors.pinkAccent,
+                      piggy.isBroken ? Icons.delete_forever : Icons.savings,
+                      color: piggy.isBroken ? Colors.red : Colors.pinkAccent,
                     ),
                   ),
                   const SizedBox(width: 12),
