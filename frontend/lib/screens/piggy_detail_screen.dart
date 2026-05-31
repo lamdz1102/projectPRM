@@ -88,16 +88,40 @@ class PiggyDetailScreen extends StatelessWidget {
   void showBreakPiggyDialog(BuildContext context) {
     final missingAmount = piggy.targetAmount - piggy.currentAmount;
 
+    String title;
+    String content;
+
+    if (piggy.isCompleted) {
+      title = 'Hoàn thành mục tiêu';
+      content =
+      'Chúc mừng! Bạn đã đạt mục tiêu tiết kiệm.\n\n'
+          'Số tiền đã tiết kiệm: ${formatMoney(piggy.currentAmount)}\n'
+          'Mục tiêu: ${formatMoney(piggy.targetAmount)}\n\n'
+          'Bạn có muốn đập heo để kết thúc Piggy này không?';
+    } else if (piggy.isLocked) {
+      title = 'Piggy đã đến hạn';
+      content =
+      '${piggy.name} đã hết thời gian tiết kiệm.\n\n'
+          'Số tiền đã tiết kiệm: ${formatMoney(piggy.currentAmount)}\n'
+          'Mục tiêu: ${formatMoney(piggy.targetAmount)}\n'
+          'Còn thiếu: ${formatMoney(missingAmount)}\n\n'
+          'Bạn có thể đập heo để kết thúc Piggy này.';
+    } else {
+      title = 'Đập heo sớm';
+      content =
+      'Piggy này vẫn còn thời gian tiết kiệm.\n\n'
+          'Số tiền đã tiết kiệm: ${formatMoney(piggy.currentAmount)}\n'
+          'Mục tiêu: ${formatMoney(piggy.targetAmount)}\n'
+          'Còn thiếu: ${formatMoney(missingAmount)}\n\n'
+          'Bạn có chắc muốn đập heo sớm không?';
+    }
+
     showDialog(
       context: context,
       builder: (_) {
         return AlertDialog(
-          title: const Text('Đập heo'),
-          content: Text(
-            piggy.isCompleted
-                ? 'Chúc mừng! Bạn đã đạt mục tiêu ${formatMoney(piggy.targetAmount)}.'
-                : 'Bạn đã tiết kiệm được ${formatMoney(piggy.currentAmount)}. Còn thiếu ${formatMoney(missingAmount)} so với mục tiêu. Bạn vẫn muốn đập heo chứ?',
-          ),
+          title: Text(title),
+          content: Text(content),
           actions: [
             TextButton(
               onPressed: () {
@@ -110,7 +134,7 @@ class PiggyDetailScreen extends StatelessWidget {
                 Navigator.pop(context);
                 Navigator.pop(context);
               },
-              child: const Text('Xác nhận'),
+              child: const Text('Đập heo'),
             ),
           ],
         );
