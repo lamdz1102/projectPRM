@@ -1,7 +1,116 @@
 import 'package:flutter/material.dart';
+import '../models/piggy.dart';
 
-class CreatePiggyScreen extends StatelessWidget {
-  const CreatePiggyScreen({super.key});
+class CreatePiggyScreen extends StatefulWidget {
+  final int nextId;
+
+  const CreatePiggyScreen({
+    super.key,
+    required this.nextId,
+  });
+
+  @override
+  State<CreatePiggyScreen> createState() => _CreatePiggyScreenState();
+}
+
+class _CreatePiggyScreenState extends State<CreatePiggyScreen> {
+  final TextEditingController nameController = TextEditingController();
+  final TextEditingController targetAmountController = TextEditingController();
+  final TextEditingController noteController = TextEditingController();
+
+  DateTime? startDate;
+  DateTime? endDate;
+
+  Future<void> pickStartDate() async {
+    final selectedDate = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2035),
+    );
+
+    if (selectedDate != null) {
+      setState(() {
+        startDate = selectedDate;
+      });
+    }
+  }
+
+  Future<void> pickEndDate() async {
+    final selectedDate = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now().add(const Duration(days: 30)),
+      firstDate: DateTime.now(),
+      lastDate: DateTime(2035),
+    );
+
+    if (selectedDate != null) {
+      setState(() {
+        endDate = selectedDate;
+      });
+    }
+  }
+
+  String formatDate(DateTime? date) {
+    if (date == null) return '';
+    return '${date.day}/${date.month}/${date.year}';
+  }
+
+  void createPiggy() {
+    final name = nameController.text.trim();
+    final targetText = targetAmountController.text.trim();
+    final note = noteController.text.trim();
+
+    if (name.isEmpty || targetText.isEmpty || startDate == null || endDate == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Vui lòng nhập đầy đủ thông tin Piggy'),
+        ),
+      );
+      return;
+    }
+
+    final targetAmount = double.tryParse(targetText);
+
+    if (targetAmount == null || targetAmount <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Số tiền mục tiêu không hợp lệ'),
+        ),
+      );
+      return;
+    }
+
+    if (endDate!.isBefore(startDate!)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Ngày kết thúc phải sau ngày bắt đầu'),
+        ),
+      );
+      return;
+    }
+
+    final newPiggy = Piggy(
+      id: widget.nextId,
+      name: name,
+      targetAmount: targetAmount,
+      currentAmount: 0,
+      startDate: startDate!,
+      endDate: endDate!,
+      note: note,
+      isBroken: false,
+    );
+
+    Navigator.pop(context, newPiggy);
+  }
+
+  @override
+  void dispose() {
+    nameController.dispose();
+    targetAmountController.dispose();
+    noteController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -18,10 +127,9 @@ class CreatePiggyScreen extends StatelessWidget {
               size: 90,
               color: Colors.pinkAccent,
             ),
-
             const SizedBox(height: 20),
-
             TextField(
+              controller: nameController,
               decoration: InputDecoration(
                 labelText: 'Tên Piggy',
                 hintText: 'Ví dụ: Heo mua laptop',
@@ -30,10 +138,9 @@ class CreatePiggyScreen extends StatelessWidget {
                 ),
               ),
             ),
-
             const SizedBox(height: 16),
-
             TextField(
+              controller: targetAmountController,
               keyboardType: TextInputType.number,
               decoration: InputDecoration(
                 labelText: 'Số tiền mục tiêu',
@@ -43,36 +150,35 @@ class CreatePiggyScreen extends StatelessWidget {
                 ),
               ),
             ),
-
             const SizedBox(height: 16),
-
             TextField(
+              readOnly: true,
+              onTap: pickStartDate,
               decoration: InputDecoration(
                 labelText: 'Ngày bắt đầu',
-                hintText: '01/06/2026',
+                hintText: startDate == null ? 'Chọn ngày bắt đầu' : formatDate(startDate),
                 suffixIcon: const Icon(Icons.calendar_month),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(16),
                 ),
               ),
             ),
-
             const SizedBox(height: 16),
-
             TextField(
+              readOnly: true,
+              onTap: pickEndDate,
               decoration: InputDecoration(
                 labelText: 'Ngày kết thúc',
-                hintText: '01/09/2026',
+                hintText: endDate == null ? 'Chọn ngày kết thúc' : formatDate(endDate),
                 suffixIcon: const Icon(Icons.calendar_month),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(16),
                 ),
               ),
             ),
-
             const SizedBox(height: 16),
-
             TextField(
+              controller: noteController,
               maxLines: 3,
               decoration: InputDecoration(
                 labelText: 'Ghi chú',
@@ -82,16 +188,12 @@ class CreatePiggyScreen extends StatelessWidget {
                 ),
               ),
             ),
-
             const SizedBox(height: 30),
-
             SizedBox(
               width: double.infinity,
               height: 52,
               child: ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                },
+                onPressed: createPiggy,
                 child: const Text('Tạo Piggy'),
               ),
             ),

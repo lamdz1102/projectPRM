@@ -3,6 +3,7 @@ import '../models/piggy.dart';
 import '../widgets/piggy_card.dart';
 import 'create_piggy_screen.dart';
 import 'piggy_detail_screen.dart';
+import '../models/activity_log.dart';
 
 class PiggyDashboardScreen extends StatefulWidget {
   const PiggyDashboardScreen({super.key});
@@ -45,11 +46,210 @@ class _PiggyDashboardScreenState extends State<PiggyDashboardScreen> {
     ),
   ];
 
+  final List<ActivityLog> recentActivities = [
+    ActivityLog(
+      type: 'add_money',
+      piggyName: 'Heo mua laptop',
+      amount: 500000,
+      time: DateTime.now().subtract(const Duration(minutes: 10)),
+      message: 'Bạn đã bỏ thêm 500.000đ vào Heo mua laptop',
+    ),
+    ActivityLog(
+      type: 'break_piggy',
+      piggyName: 'Heo du lịch Đà Lạt',
+      time: DateTime.now().subtract(const Duration(hours: 2)),
+      message: 'Bạn đã đập Heo du lịch Đà Lạt',
+    ),
+    ActivityLog(
+      type: 'delete_piggy',
+      piggyName: 'Heo quà sinh nhật',
+      time: DateTime.now().subtract(const Duration(days: 1)),
+      message: 'Bạn đã xóa Heo quà sinh nhật',
+    ),
+    ActivityLog(
+      type: 'create_piggy',
+      piggyName: 'Heo quỹ khẩn cấp',
+      time: DateTime.now().subtract(const Duration(days: 2)),
+      message: 'Bạn đã tạo Heo quỹ khẩn cấp',
+    ),
+  ];
+
   String formatMoney(double value) {
     return '${value.toStringAsFixed(0).replaceAllMapped(
       RegExp(r'(\d)(?=(\d{3})+(?!\d))'),
           (match) => '${match[1]}.',
     )}đ';
+  }
+
+  String formatActivityTime(DateTime time) {
+    final now = DateTime.now();
+    final difference = now.difference(time);
+
+    if (difference.inMinutes < 1) {
+      return 'Vừa xong';
+    } else if (difference.inMinutes < 60) {
+      return '${difference.inMinutes} phút trước';
+    } else if (difference.inHours < 24) {
+      return '${difference.inHours} giờ trước';
+    } else {
+      return '${difference.inDays} ngày trước';
+    }
+  }
+
+  IconData getActivityIcon(String type) {
+    switch (type) {
+      case 'add_money':
+        return Icons.savings;
+      case 'break_piggy':
+        return Icons.celebration;
+      case 'delete_piggy':
+        return Icons.delete_outline;
+      case 'create_piggy':
+        return Icons.add_circle_outline;
+      default:
+        return Icons.notifications_none;
+    }
+  }
+
+  Color getActivityColor(String type) {
+    switch (type) {
+      case 'add_money':
+        return Colors.green;
+      case 'break_piggy':
+        return Colors.orange;
+      case 'delete_piggy':
+        return Colors.redAccent;
+      case 'create_piggy':
+        return Colors.pinkAccent;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  void addActivity({
+    required String type,
+    required String piggyName,
+    double? amount,
+    required String message,
+  }) {
+    setState(() {
+      recentActivities.insert(
+        0,
+        ActivityLog(
+          type: type,
+          piggyName: piggyName,
+          amount: amount,
+          time: DateTime.now(),
+          message: message,
+        ),
+      );
+
+      if (recentActivities.length > 10) {
+        recentActivities.removeLast();
+      }
+    });
+  }
+
+  Future<void> openCreatePiggyScreen() async {
+    final newPiggy = await Navigator.push<Piggy>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CreatePiggyScreen(
+          nextId: piggies.isEmpty ? 1 : piggies.last.id + 1,
+        ),
+      ),
+    );
+
+    if (newPiggy != null) {
+      setState(() {
+        piggies.add(newPiggy);
+      });
+
+      addActivity(
+        type: 'create_piggy',
+        piggyName: newPiggy.name,
+        message: 'Bạn đã tạo ${newPiggy.name}',
+      );
+    }
+  }
+
+  void showRecentActivities() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (_) {
+        final displayActivities = recentActivities.take(10).toList();
+
+        return Padding(
+          padding: const EdgeInsets.all(20),
+          child: SizedBox(
+            height: 500,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  '10 hoạt động gần nhất',
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Expanded(
+                  child: displayActivities.isEmpty
+                      ? const Center(
+                    child: Text(
+                      'Chưa có hoạt động nào.',
+                      style: TextStyle(fontSize: 16),
+                    ),
+                  )
+                      : ListView.separated(
+                    itemCount: displayActivities.length,
+                    separatorBuilder: (_, __) => const Divider(),
+                    itemBuilder: (context, index) {
+                      final activity = displayActivities[index];
+
+                      return ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: CircleAvatar(
+                          backgroundColor:
+                          getActivityColor(activity.type).withOpacity(0.15),
+                          child: Icon(
+                            getActivityIcon(activity.type),
+                            color: getActivityColor(activity.type),
+                          ),
+                        ),
+                        title: Text(
+                          activity.message,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        subtitle: Text(formatActivityTime(activity.time)),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   void showDeletePiggyDialog(Piggy piggy) {
@@ -79,6 +279,12 @@ class _PiggyDashboardScreenState extends State<PiggyDashboardScreen> {
                   piggies.removeWhere((item) => item.id == piggy.id);
                 });
 
+                addActivity(
+                  type: 'delete_piggy',
+                  piggyName: piggy.name,
+                  message: 'Bạn đã xóa ${piggy.name}',
+                );
+
                 Navigator.pop(context);
               },
               child: const Text('Xóa'),
@@ -87,6 +293,72 @@ class _PiggyDashboardScreenState extends State<PiggyDashboardScreen> {
         );
       },
     );
+  }
+
+  Future<void> openPiggyDetail(Piggy piggy) async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PiggyDetailScreen(
+          piggy: piggy,
+        ),
+      ),
+    );
+
+    if (result is Piggy) {
+      final oldPiggy = piggies.firstWhere((item) => item.id == result.id);
+
+      setState(() {
+        final index = piggies.indexWhere((item) => item.id == result.id);
+        if (index != -1) {
+          piggies[index] = result;
+        }
+      });
+
+      if (!oldPiggy.isBroken && result.isBroken) {
+        addActivity(
+          type: 'break_piggy',
+          piggyName: result.name,
+          message: 'Bạn đã đập ${result.name}',
+        );
+      }
+    }
+
+    if (result is Map && result['action'] == 'delete') {
+      final deletedPiggy = piggies.firstWhere(
+            (item) => item.id == result['id'],
+      );
+
+      setState(() {
+        piggies.removeWhere((item) => item.id == result['id']);
+      });
+
+      addActivity(
+        type: 'delete_piggy',
+        piggyName: deletedPiggy.name,
+        message: 'Bạn đã xóa ${deletedPiggy.name}',
+      );
+    }
+
+    if (result is Map && result['action'] == 'add_money') {
+      final piggyId = result['piggyId'] as int;
+      final amount = result['amount'] as double;
+      final updatedPiggy = result['piggy'] as Piggy;
+
+      setState(() {
+        final index = piggies.indexWhere((item) => item.id == piggyId);
+        if (index != -1) {
+          piggies[index] = updatedPiggy;
+        }
+      });
+
+      addActivity(
+        type: 'add_money',
+        piggyName: updatedPiggy.name,
+        amount: amount,
+        message: 'Bạn đã bỏ thêm ${formatMoney(amount)} vào ${updatedPiggy.name}',
+      );
+    }
   }
 
   @override
@@ -102,6 +374,36 @@ class _PiggyDashboardScreenState extends State<PiggyDashboardScreen> {
       appBar: AppBar(
         title: const Text('Piggy Bank'),
         actions: [
+          Stack(
+            children: [
+              IconButton(
+                onPressed: showRecentActivities,
+                icon: const Icon(Icons.notifications_none),
+              ),
+              if (recentActivities.isNotEmpty)
+                Positioned(
+                  right: 8,
+                  top: 8,
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: const BoxDecoration(
+                      color: Colors.redAccent,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Text(
+                      recentActivities.length > 9
+                          ? '9+'
+                          : '${recentActivities.length}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
           IconButton(
             onPressed: () {},
             icon: const Icon(Icons.person_outline),
@@ -120,18 +422,14 @@ class _PiggyDashboardScreenState extends State<PiggyDashboardScreen> {
                 fontWeight: FontWeight.bold,
               ),
             ),
-
             const SizedBox(height: 8),
-
             const Text(
               'Hôm nay bạn muốn bỏ tiền vào heo nào?',
               style: TextStyle(
                 color: Colors.black54,
               ),
             ),
-
             const SizedBox(height: 20),
-
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(20),
@@ -173,9 +471,7 @@ class _PiggyDashboardScreenState extends State<PiggyDashboardScreen> {
                 ],
               ),
             ),
-
             const SizedBox(height: 24),
-
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -187,60 +483,32 @@ class _PiggyDashboardScreenState extends State<PiggyDashboardScreen> {
                   ),
                 ),
                 TextButton.icon(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const CreatePiggyScreen(),
-                      ),
-                    );
-                  },
+                  onPressed: openCreatePiggyScreen,
                   icon: const Icon(Icons.add),
                   label: const Text('Tạo mới'),
                 ),
               ],
             ),
-
             const SizedBox(height: 10),
-
             Expanded(
-              child: ListView.builder(
+              child: piggies.isEmpty
+                  ? const Center(
+                child: Text(
+                  'Chưa có Piggy nào.\nHãy tạo Piggy đầu tiên của bạn!',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.black54),
+                ),
+              )
+                  : ListView.builder(
                 itemCount: piggies.length,
                 itemBuilder: (context, index) {
                   final piggy = piggies[index];
 
                   return PiggyCard(
                     piggy: piggy,
-
-                    onTap: () async {
-                      final result = await Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => PiggyDetailScreen(
-                            piggy: piggy,
-                          ),
-                        ),
-                      );
-
-                      // Trường hợp Piggy được cập nhật, ví dụ sau khi đập heo
-                      if (result is Piggy) {
-                        setState(() {
-                          final index = piggies.indexWhere((item) => item.id == result.id);
-                          if (index != -1) {
-                            piggies[index] = result;
-                          }
-                        });
-                      }
-
-                      // Xóa trong màn detail
-                      if (result is Map && result['action'] == 'delete') {
-                        setState(() {
-                          piggies.removeWhere((item) => item.id == result['id']);
-                        });
-                      }
+                    onTap: () {
+                      openPiggyDetail(piggy);
                     },
-
-                    // Xóa Piggy ngoài Dashboard
                     onDelete: () {
                       showDeletePiggyDialog(piggy);
                     },
@@ -254,14 +522,7 @@ class _PiggyDashboardScreenState extends State<PiggyDashboardScreen> {
       floatingActionButton: FloatingActionButton(
         backgroundColor: Colors.pinkAccent,
         foregroundColor: Colors.white,
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => const CreatePiggyScreen(),
-            ),
-          );
-        },
+        onPressed: openCreatePiggyScreen,
         child: const Icon(Icons.add),
       ),
     );

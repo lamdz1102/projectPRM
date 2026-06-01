@@ -18,6 +18,9 @@ class PiggyDetailScreen extends StatelessWidget {
   }
 
   void showAddMoneyDialog(BuildContext context) {
+    final TextEditingController amountController = TextEditingController();
+    final TextEditingController noteController = TextEditingController();
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -39,10 +42,9 @@ class PiggyDetailScreen extends StatelessWidget {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-
               const SizedBox(height: 20),
-
               TextField(
+                controller: amountController,
                 keyboardType: TextInputType.number,
                 decoration: InputDecoration(
                   labelText: 'Số tiền',
@@ -52,10 +54,9 @@ class PiggyDetailScreen extends StatelessWidget {
                   ),
                 ),
               ),
-
               const SizedBox(height: 16),
-
               TextField(
+                controller: noteController,
                 maxLines: 2,
                 decoration: InputDecoration(
                   labelText: 'Ghi chú',
@@ -65,15 +66,37 @@ class PiggyDetailScreen extends StatelessWidget {
                   ),
                 ),
               ),
-
               const SizedBox(height: 20),
-
               SizedBox(
                 width: double.infinity,
                 height: 50,
                 child: ElevatedButton(
                   onPressed: () {
-                    Navigator.pop(context);
+                    final amountText = amountController.text.trim();
+                    final amount = double.tryParse(amountText);
+
+                    if (amount == null || amount <= 0) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Số tiền không hợp lệ'),
+                        ),
+                      );
+                      return;
+                    }
+
+                    final updatedPiggy = piggy.copyWith(
+                      currentAmount: piggy.currentAmount + amount,
+                    );
+
+                    Navigator.pop(context); // đóng bottom sheet
+
+                    Navigator.pop(context, {
+                      'action': 'add_money',
+                      'piggyId': piggy.id,
+                      'amount': amount,
+                      'note': noteController.text.trim(),
+                      'piggy': updatedPiggy,
+                    });
                   },
                   child: const Text('Xác nhận'),
                 ),
