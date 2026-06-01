@@ -52,66 +52,48 @@ class _PiggyDashboardScreenState extends State<PiggyDashboardScreen> {
     )}đ';
   }
 
-  Future<void> showBreakAnimation(BuildContext context) async {
-    await showGeneralDialog(
+  void showDeletePiggyDialog(Piggy piggy) {
+    showDialog(
       context: context,
-      barrierDismissible: false,
-      barrierLabel: 'Break Piggy',
-      transitionDuration: const Duration(milliseconds: 300),
-      pageBuilder: (context, animation, secondaryAnimation) {
-        return const SizedBox.shrink();
-      },
-      transitionBuilder: (context, animation, secondaryAnimation, child) {
-        return Opacity(
-          opacity: animation.value,
-          child: Center(
-            child: TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0.6, end: 1.2),
-              duration: const Duration(milliseconds: 800),
-              builder: (context, scale, child) {
-                return Transform.scale(
-                  scale: scale,
-                  child: Material(
-                    color: Colors.transparent,
-                    child: Container(
-                      padding: const EdgeInsets.all(24),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(24),
-                      ),
-                      child: const Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            '💥🐷',
-                            style: TextStyle(fontSize: 64),
-                          ),
-                          SizedBox(height: 12),
-                          Text(
-                            'Piggy đã được đập!',
-                            style: TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
+      builder: (_) {
+        return AlertDialog(
+          title: const Text('Xóa Piggy'),
+          content: Text(
+            'Bạn có chắc muốn xóa "${piggy.name}" không?\n\n'
+                'Thao tác này sẽ xóa Piggy khỏi danh sách.',
           ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+              },
+              child: const Text('Hủy'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.redAccent,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () {
+                setState(() {
+                  piggies.removeWhere((item) => item.id == piggy.id);
+                });
+
+                Navigator.pop(context);
+              },
+              child: const Text('Xóa'),
+            ),
+          ],
         );
       },
     );
-
-    await Future.delayed(const Duration(milliseconds: 1000));
   }
 
   @override
   Widget build(BuildContext context) {
-    final totalSaving = piggies.fold<double>(
+    final totalSaving = piggies
+        .where((piggy) => !piggy.isBroken)
+        .fold<double>(
       0,
           (sum, piggy) => sum + piggy.currentAmount,
     );
@@ -229,8 +211,9 @@ class _PiggyDashboardScreenState extends State<PiggyDashboardScreen> {
 
                   return PiggyCard(
                     piggy: piggy,
+
                     onTap: () async {
-                      final updatedPiggy = await Navigator.push<Piggy>(
+                      final result = await Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (_) => PiggyDetailScreen(
@@ -239,14 +222,27 @@ class _PiggyDashboardScreenState extends State<PiggyDashboardScreen> {
                         ),
                       );
 
-                      if (updatedPiggy != null) {
+                      // Trường hợp Piggy được cập nhật, ví dụ sau khi đập heo
+                      if (result is Piggy) {
                         setState(() {
-                          final index = piggies.indexWhere((item) => item.id == updatedPiggy.id);
+                          final index = piggies.indexWhere((item) => item.id == result.id);
                           if (index != -1) {
-                            piggies[index] = updatedPiggy;
+                            piggies[index] = result;
                           }
                         });
                       }
+
+                      // Xóa trong màn detail
+                      if (result is Map && result['action'] == 'delete') {
+                        setState(() {
+                          piggies.removeWhere((item) => item.id == result['id']);
+                        });
+                      }
+                    },
+
+                    // Xóa Piggy ngoài Dashboard
+                    onDelete: () {
+                      showDeletePiggyDialog(piggy);
                     },
                   );
                 },

@@ -4,11 +4,13 @@ import '../models/piggy.dart';
 class PiggyCard extends StatelessWidget {
   final Piggy piggy;
   final VoidCallback onTap;
+  final VoidCallback onDelete;
 
   const PiggyCard({
     super.key,
     required this.piggy,
     required this.onTap,
+    required this.onDelete,
   });
 
   String formatMoney(double value) {
@@ -62,6 +64,15 @@ class PiggyCard extends StatelessWidget {
                       ),
                     ),
                   ),
+
+                  IconButton(
+                    onPressed: onDelete,
+                    icon: const Icon(
+                      Icons.delete_outline,
+                      color: Colors.redAccent,
+                    ),
+                  ),
+
                   Chip(
                     label: Text(
                       piggy.status,

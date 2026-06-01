@@ -181,12 +181,54 @@ class PiggyDetailScreen extends StatelessWidget {
             ),
             ElevatedButton(
               onPressed: () async {
-                Navigator.pop(context);
+                Navigator.pop(context); // đóng dialog xác nhận
+
                 await showBreakAnimation(context);
-                final brokenPiggy = piggy.copyWith(isBroken: true);
-                Navigator.pop(context, brokenPiggy);
+
+                if (context.mounted) {
+                  final brokenPiggy = piggy.copyWith(isBroken: true);
+                  Navigator.pop(context, brokenPiggy); // quay về Dashboard
+                }
               },
               child: const Text('Đập heo'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void showDeletePiggyFromDetailDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (_) {
+        return AlertDialog(
+          title: const Text('Xóa Piggy'),
+          content: Text(
+            'Bạn có chắc muốn xóa "${piggy.name}" không?\n\n'
+                'Sau khi xóa, Piggy này sẽ không còn hiển thị trên Dashboard.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+              },
+              child: const Text('Hủy'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.redAccent,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () {
+                Navigator.pop(context); // đóng dialog
+
+                Navigator.pop(context, {
+                  'action': 'delete',
+                  'id': piggy.id,
+                }); // quay về Dashboard và báo xóa
+              },
+              child: const Text('Xóa'),
             ),
           ],
         );
@@ -206,10 +248,10 @@ class PiggyDetailScreen extends StatelessWidget {
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            const Icon(
-              Icons.savings,
+            Icon(
+              piggy.isBroken ? Icons.delete_forever : Icons.savings,
               size: 110,
-              color: Colors.pinkAccent,
+              color: piggy.isBroken ? Colors.redAccent : Colors.pinkAccent,
             ),
 
             const SizedBox(height: 16),
@@ -371,13 +413,34 @@ class PiggyDetailScreen extends StatelessWidget {
               width: double.infinity,
               height: 52,
               child: TextButton.icon(
-                onPressed: () {
+                onPressed: piggy.isBroken
+                    ? null
+                    : () {
                   showBreakPiggyDialog(context);
                 },
                 icon: const Icon(Icons.celebration),
-                label: const Text('Đập heo'),
+                label: Text(piggy.isBroken ? 'Piggy đã được đập' : 'Đập heo'),
               ),
             ),
+
+            const SizedBox(height: 12),
+
+            SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.redAccent,
+                  side: const BorderSide(color: Colors.redAccent),
+                ),
+                onPressed: () {
+                  showDeletePiggyFromDetailDialog(context);
+                },
+                icon: const Icon(Icons.delete_outline),
+                label: const Text('Xóa Piggy'),
+              ),
+            ),
+
           ],
         ),
       ),
