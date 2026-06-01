@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import '../models/piggy.dart';
 import 'piggy_history_screen.dart';
+import '../models/piggy_deposit.dart';
 
 class PiggyDetailScreen extends StatelessWidget {
   final Piggy piggy;
+  final List<PiggyDeposit> deposits;
 
   const PiggyDetailScreen({
     super.key,
     required this.piggy,
+    required this.deposits,
   });
 
   String formatMoney(double value) {
@@ -421,6 +424,7 @@ class PiggyDetailScreen extends StatelessWidget {
                     MaterialPageRoute(
                       builder: (_) => PiggyHistoryScreen(
                         piggy: piggy,
+                        deposits: deposits,
                       ),
                     ),
                   );

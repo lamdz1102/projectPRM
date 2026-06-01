@@ -4,35 +4,13 @@ import '../models/piggy_deposit.dart';
 
 class PiggyHistoryScreen extends StatelessWidget {
   final Piggy piggy;
+  final List<PiggyDeposit> deposits;
 
-  PiggyHistoryScreen({
+  const PiggyHistoryScreen({
     super.key,
     required this.piggy,
+    required this.deposits,
   });
-
-  final List<PiggyDeposit> deposits = [
-    PiggyDeposit(
-      id: 1,
-      piggyId: 1,
-      amount: 200000,
-      date: DateTime(2026, 5, 28),
-      note: 'Tiền tiết kiệm tuần này',
-    ),
-    PiggyDeposit(
-      id: 2,
-      piggyId: 1,
-      amount: 500000,
-      date: DateTime(2026, 5, 20),
-      note: 'Tiền làm thêm',
-    ),
-    PiggyDeposit(
-      id: 3,
-      piggyId: 1,
-      amount: 100000,
-      date: DateTime(2026, 5, 15),
-      note: 'Bớt ăn vặt',
-    ),
-  ];
 
   String formatMoney(double value) {
     return '${value.toStringAsFixed(0).replaceAllMapped(
@@ -79,7 +57,14 @@ class PiggyHistoryScreen extends StatelessWidget {
             const SizedBox(height: 20),
 
             Expanded(
-              child: ListView.builder(
+              child: piggyDeposits.isEmpty
+                  ? const Center(
+                child: Text(
+                  'Chưa có lịch sử bỏ tiền nào.',
+                  style: TextStyle(color: Colors.black54),
+                ),
+              )
+                  : ListView.builder(
                 itemCount: piggyDeposits.length,
                 itemBuilder: (context, index) {
                   final deposit = piggyDeposits[index];

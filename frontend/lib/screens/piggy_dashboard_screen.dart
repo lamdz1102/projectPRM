@@ -4,6 +4,7 @@ import '../widgets/piggy_card.dart';
 import 'create_piggy_screen.dart';
 import 'piggy_detail_screen.dart';
 import '../models/activity_log.dart';
+import '../models/piggy_deposit.dart';
 
 class PiggyDashboardScreen extends StatefulWidget {
   const PiggyDashboardScreen({super.key});
@@ -295,12 +296,37 @@ class _PiggyDashboardScreenState extends State<PiggyDashboardScreen> {
     );
   }
 
+  final List<PiggyDeposit> deposits = [
+    PiggyDeposit(
+      id: 1,
+      piggyId: 1,
+      amount: 200000,
+      date: DateTime(2026, 5, 28),
+      note: 'Tiền tiết kiệm tuần này',
+    ),
+    PiggyDeposit(
+      id: 2,
+      piggyId: 1,
+      amount: 500000,
+      date: DateTime(2026, 5, 20),
+      note: 'Tiền làm thêm',
+    ),
+    PiggyDeposit(
+      id: 3,
+      piggyId: 1,
+      amount: 100000,
+      date: DateTime(2026, 5, 15),
+      note: 'Bớt ăn vặt',
+    ),
+  ];
+
   Future<void> openPiggyDetail(Piggy piggy) async {
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => PiggyDetailScreen(
           piggy: piggy,
+          deposits: deposits.where((deposit) => deposit.piggyId == piggy.id).toList(),
         ),
       ),
     );
@@ -343,6 +369,7 @@ class _PiggyDashboardScreenState extends State<PiggyDashboardScreen> {
     if (result is Map && result['action'] == 'add_money') {
       final piggyId = result['piggyId'] as int;
       final amount = result['amount'] as double;
+      final note = result['note'] as String;
       final updatedPiggy = result['piggy'] as Piggy;
 
       setState(() {
@@ -350,6 +377,17 @@ class _PiggyDashboardScreenState extends State<PiggyDashboardScreen> {
         if (index != -1) {
           piggies[index] = updatedPiggy;
         }
+
+        deposits.insert(
+          0,
+          PiggyDeposit(
+            id: deposits.isEmpty ? 1 : deposits.first.id + 1,
+            piggyId: piggyId,
+            amount: amount,
+            date: DateTime.now(),
+            note: note.isEmpty ? 'Không có ghi chú' : note,
+          ),
+        );
       });
 
       addActivity(
