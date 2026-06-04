@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import '../models/piggy.dart';
 import 'piggy_history_screen.dart';
 import '../models/piggy_deposit.dart';
+import '../services/piggy_api_service.dart';
 
 class PiggyDetailScreen extends StatelessWidget {
   final Piggy piggy;
   final List<PiggyDeposit> deposits;
+  final PiggyApiService apiService = PiggyApiService();
 
-  const PiggyDetailScreen({
+   PiggyDetailScreen({
     super.key,
     required this.piggy,
     required this.deposits,
@@ -45,7 +47,9 @@ class PiggyDetailScreen extends StatelessWidget {
                   fontWeight: FontWeight.bold,
                 ),
               ),
+
               const SizedBox(height: 20),
+
               TextField(
                 controller: amountController,
                 keyboardType: TextInputType.number,
@@ -57,7 +61,9 @@ class PiggyDetailScreen extends StatelessWidget {
                   ),
                 ),
               ),
+
               const SizedBox(height: 16),
+
               TextField(
                 controller: noteController,
                 maxLines: 2,
@@ -69,14 +75,17 @@ class PiggyDetailScreen extends StatelessWidget {
                   ),
                 ),
               ),
+
               const SizedBox(height: 20),
+
               SizedBox(
                 width: double.infinity,
                 height: 50,
                 child: ElevatedButton(
-                  onPressed: () {
+                  onPressed: () async {
                     final amountText = amountController.text.trim();
                     final amount = double.tryParse(amountText);
+                    final note = noteController.text.trim();
 
                     if (amount == null || amount <= 0) {
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -87,19 +96,31 @@ class PiggyDetailScreen extends StatelessWidget {
                       return;
                     }
 
-                    final updatedPiggy = piggy.copyWith(
-                      currentAmount: piggy.currentAmount + amount,
-                    );
+                    try {
+                      final updatedPiggy = await apiService.addMoney(
+                        piggyId: piggy.id,
+                        amount: amount,
+                        note: note,
+                      );
 
-                    Navigator.pop(context); // đóng bottom sheet
+                      Navigator.pop(context); // đóng bottom sheet
 
-                    Navigator.pop(context, {
-                      'action': 'add_money',
-                      'piggyId': piggy.id,
-                      'amount': amount,
-                      'note': noteController.text.trim(),
-                      'piggy': updatedPiggy,
-                    });
+                      Navigator.pop(context, {
+                        'action': 'add_money',
+                        'piggyId': piggy.id,
+                        'amount': amount,
+                        'note': note,
+                        'piggy': updatedPiggy,
+                      });
+                    } catch (e) {
+                      Navigator.pop(context);
+
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Bỏ tiền thất bại: $e'),
+                        ),
+                      );
+                    }
                   },
                   child: const Text('Xác nhận'),
                 ),

@@ -346,8 +346,6 @@ class _PiggyDashboardScreenState extends State<PiggyDashboardScreen> {
 
     if (result is Map && result['action'] == 'add_money') {
       final piggyId = result['piggyId'] as int;
-      final amount = result['amount'] as double;
-      final note = result['note'] as String;
       final updatedPiggy = result['piggy'] as Piggy;
 
       setState(() {
@@ -355,25 +353,9 @@ class _PiggyDashboardScreenState extends State<PiggyDashboardScreen> {
         if (index != -1) {
           piggies[index] = updatedPiggy;
         }
-
-        deposits.insert(
-          0,
-          PiggyDeposit(
-            id: deposits.isEmpty ? 1 : deposits.first.id + 1,
-            piggyId: piggyId,
-            amount: amount,
-            date: DateTime.now(),
-            note: note.isEmpty ? 'Không có ghi chú' : note,
-          ),
-        );
       });
 
-      addActivity(
-        type: 'add_money',
-        piggyName: updatedPiggy.name,
-        amount: amount,
-        message: 'Bạn đã bỏ thêm ${formatMoney(amount)} vào ${updatedPiggy.name}',
-      );
+      await loadActivities();
     }
   }
 
