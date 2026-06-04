@@ -99,6 +99,7 @@ class _CreatePiggyScreenState extends State<CreatePiggyScreen> {
       endDate: endDate!,
       note: note,
       isBroken: false,
+      status: 'ACTIVE',
     );
 
     Navigator.pop(context, newPiggy);

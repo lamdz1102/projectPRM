@@ -12,4 +12,14 @@ class PiggyDeposit {
     required this.date,
     required this.note,
   });
+
+  factory PiggyDeposit.fromJson(Map<String, dynamic> json) {
+    return PiggyDeposit(
+      id: json['id'],
+      piggyId: json['piggyId'],
+      amount: (json['amount'] ?? 0).toDouble(),
+      date: DateTime.parse(json['depositDate']),
+      note: json['note'] ?? '',
+    );
+  }
 }

@@ -24,6 +24,7 @@ class _PiggyDashboardScreenState extends State<PiggyDashboardScreen> {
       endDate: DateTime(2026, 9, 1),
       note: 'Tiết kiệm để mua laptop học Flutter',
       isBroken: false,
+      status:  'Đang tiết kiệm',
     ),
     Piggy(
       id: 2,
@@ -34,6 +35,7 @@ class _PiggyDashboardScreenState extends State<PiggyDashboardScreen> {
       endDate: DateTime(2026, 7, 1),
       note: 'Du lịch cùng bạn bè',
       isBroken: false,
+      status: 'Active',
     ),
     Piggy(
       id: 3,
@@ -44,6 +46,7 @@ class _PiggyDashboardScreenState extends State<PiggyDashboardScreen> {
       endDate: DateTime(2026, 5, 1),
       note: 'Dự phòng khi cần thiết',
       isBroken: false,
+      status: 'LOCKED',
     ),
   ];
 

@@ -7,6 +7,7 @@ class Piggy {
   final DateTime endDate;
   final String note;
   final bool isBroken;
+  final String status;
 
   Piggy({
     required this.id,
@@ -16,8 +17,33 @@ class Piggy {
     required this.startDate,
     required this.endDate,
     required this.note,
-    this.isBroken = false,
+    required this.isBroken,
+    required this.status,
   });
+
+  factory Piggy.fromJson(Map<String, dynamic> json) {
+    return Piggy(
+      id: json['id'],
+      name: json['name'] ?? '',
+      targetAmount: (json['targetAmount'] ?? 0).toDouble(),
+      currentAmount: (json['currentAmount'] ?? 0).toDouble(),
+      startDate: DateTime.parse(json['startDate']),
+      endDate: DateTime.parse(json['endDate']),
+      note: json['note'] ?? '',
+      isBroken: json['isBroken'] ?? false,
+      status: json['status'] ?? 'ACTIVE',
+    );
+  }
+
+  Map<String, dynamic> toCreateJson() {
+    return {
+      'name': name,
+      'targetAmount': targetAmount,
+      'startDate': startDate.toIso8601String().split('T').first,
+      'endDate': endDate.toIso8601String().split('T').first,
+      'note': note,
+    };
+  }
 
   double get progress {
     if (targetAmount == 0) return 0;
@@ -25,22 +51,21 @@ class Piggy {
   }
 
   int get daysLeft {
-    final now = DateTime.now();
-    return endDate.difference(now).inDays;
+    return endDate.difference(DateTime.now()).inDays;
   }
 
   bool get isLocked {
-    return DateTime.now().isAfter(endDate);
+    return status == 'LOCKED';
   }
 
   bool get isCompleted {
-    return currentAmount >= targetAmount;
+    return status == 'COMPLETED';
   }
 
-  String get status {
-    if (isBroken) return 'Đã đập';
-    if (isLocked && !isCompleted) return 'Đã khóa';
-    if (isCompleted) return 'Hoàn thành';
+  String get displayStatus {
+    if (status == 'BROKEN') return 'Đã đập';
+    if (status == 'LOCKED') return 'Đã khóa';
+    if (status == 'COMPLETED') return 'Hoàn thành';
     return 'Đang tiết kiệm';
   }
 
@@ -53,6 +78,7 @@ class Piggy {
     DateTime? endDate,
     String? note,
     bool? isBroken,
+    String? status,
   }) {
     return Piggy(
       id: id ?? this.id,
@@ -63,6 +89,7 @@ class Piggy {
       endDate: endDate ?? this.endDate,
       note: note ?? this.note,
       isBroken: isBroken ?? this.isBroken,
+      status: status ?? this.status,
     );
   }
 }

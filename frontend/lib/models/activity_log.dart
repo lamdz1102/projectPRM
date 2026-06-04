@@ -1,5 +1,5 @@
 class ActivityLog {
-  final String type; // add_money, break_piggy, delete_piggy, create_piggy
+  final String type;
   final String piggyName;
   final double? amount;
   final DateTime time;
@@ -12,4 +12,14 @@ class ActivityLog {
     required this.time,
     required this.message,
   });
+
+  factory ActivityLog.fromJson(Map<String, dynamic> json) {
+    return ActivityLog(
+      type: json['type'] ?? '',
+      piggyName: json['piggyName'] ?? '',
+      amount: json['amount'] == null ? null : (json['amount'] as num).toDouble(),
+      time: DateTime.parse(json['createdAt']),
+      message: json['message'] ?? '',
+    );
+  }
 }
