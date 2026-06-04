@@ -5,6 +5,7 @@ import 'create_piggy_screen.dart';
 import 'piggy_detail_screen.dart';
 import '../models/activity_log.dart';
 import '../models/piggy_deposit.dart';
+import '../services/piggy_api_service.dart';
 
 class PiggyDashboardScreen extends StatefulWidget {
   const PiggyDashboardScreen({super.key});
@@ -14,69 +15,13 @@ class PiggyDashboardScreen extends StatefulWidget {
 }
 
 class _PiggyDashboardScreenState extends State<PiggyDashboardScreen> {
-  final List<Piggy> piggies = [
-    Piggy(
-      id: 1,
-      name: 'Heo mua laptop',
-      targetAmount: 15000000,
-      currentAmount: 5000000,
-      startDate: DateTime(2026, 5, 1),
-      endDate: DateTime(2026, 9, 1),
-      note: 'Tiết kiệm để mua laptop học Flutter',
-      isBroken: false,
-      status:  'Đang tiết kiệm',
-    ),
-    Piggy(
-      id: 2,
-      name: 'Heo du lịch Đà Lạt',
-      targetAmount: 3000000,
-      currentAmount: 3000000,
-      startDate: DateTime(2026, 5, 1),
-      endDate: DateTime(2026, 7, 1),
-      note: 'Du lịch cùng bạn bè',
-      isBroken: false,
-      status: 'Active',
-    ),
-    Piggy(
-      id: 3,
-      name: 'Heo quỹ khẩn cấp',
-      targetAmount: 5000000,
-      currentAmount: 2000000,
-      startDate: DateTime(2026, 1, 1),
-      endDate: DateTime(2026, 5, 1),
-      note: 'Dự phòng khi cần thiết',
-      isBroken: false,
-      status: 'LOCKED',
-    ),
-  ];
+  List<Piggy> piggies = [];
+  bool isLoading = true;
+  String? errorMessage;
 
-  final List<ActivityLog> recentActivities = [
-    ActivityLog(
-      type: 'add_money',
-      piggyName: 'Heo mua laptop',
-      amount: 500000,
-      time: DateTime.now().subtract(const Duration(minutes: 10)),
-      message: 'Bạn đã bỏ thêm 500.000đ vào Heo mua laptop',
-    ),
-    ActivityLog(
-      type: 'break_piggy',
-      piggyName: 'Heo du lịch Đà Lạt',
-      time: DateTime.now().subtract(const Duration(hours: 2)),
-      message: 'Bạn đã đập Heo du lịch Đà Lạt',
-    ),
-    ActivityLog(
-      type: 'delete_piggy',
-      piggyName: 'Heo quà sinh nhật',
-      time: DateTime.now().subtract(const Duration(days: 1)),
-      message: 'Bạn đã xóa Heo quà sinh nhật',
-    ),
-    ActivityLog(
-      type: 'create_piggy',
-      piggyName: 'Heo quỹ khẩn cấp',
-      time: DateTime.now().subtract(const Duration(days: 2)),
-      message: 'Bạn đã tạo Heo quỹ khẩn cấp',
-    ),
-  ];
+  final PiggyApiService apiService = PiggyApiService();
+
+  List<ActivityLog> recentActivities = [];
 
   String formatMoney(double value) {
     return '${value.toStringAsFixed(0).replaceAllMapped(
@@ -165,15 +110,27 @@ class _PiggyDashboardScreenState extends State<PiggyDashboardScreen> {
     );
 
     if (newPiggy != null) {
-      setState(() {
-        piggies.add(newPiggy);
-      });
+      try {
+        final createdPiggy = await apiService.createPiggy(
+          name: newPiggy.name,
+          targetAmount: newPiggy.targetAmount,
+          startDate: newPiggy.startDate,
+          endDate: newPiggy.endDate,
+          note: newPiggy.note,
+        );
 
-      addActivity(
-        type: 'create_piggy',
-        piggyName: newPiggy.name,
-        message: 'Bạn đã tạo ${newPiggy.name}',
-      );
+        setState(() {
+          piggies.add(createdPiggy);
+        });
+
+        await loadActivities();
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Tạo Piggy thất bại: $e'),
+          ),
+        );
+      }
     }
   }
 
@@ -268,8 +225,26 @@ class _PiggyDashboardScreenState extends State<PiggyDashboardScreen> {
           ),
           actions: [
             TextButton(
-              onPressed: () {
-                Navigator.pop(context);
+              onPressed: () async {
+                try {
+                  await apiService.deletePiggy(piggy.id);
+
+                  setState(() {
+                    piggies.removeWhere((item) => item.id == piggy.id);
+                  });
+
+                  await loadActivities();
+
+                  Navigator.pop(context);
+                } catch (e) {
+                  Navigator.pop(context);
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Xóa Piggy thất bại: $e'),
+                    ),
+                  );
+                }
               },
               child: const Text('Hủy'),
             ),
@@ -532,7 +507,19 @@ class _PiggyDashboardScreenState extends State<PiggyDashboardScreen> {
             ),
             const SizedBox(height: 10),
             Expanded(
-              child: piggies.isEmpty
+              child: isLoading
+                  ? const Center(
+                child: CircularProgressIndicator(),
+              )
+                  : errorMessage != null
+                  ? Center(
+                child: Text(
+                  errorMessage!,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Colors.redAccent),
+                ),
+              )
+                  : piggies.isEmpty
                   ? const Center(
                 child: Text(
                   'Chưa có Piggy nào.\nHãy tạo Piggy đầu tiên của bạn!',
@@ -567,5 +554,41 @@ class _PiggyDashboardScreenState extends State<PiggyDashboardScreen> {
         child: const Icon(Icons.add),
       ),
     );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    loadPiggies();
+    loadActivities();
+  }
+
+  Future<void> loadPiggies() async {
+    try {
+      final data = await apiService.getPiggies();
+
+      setState(() {
+        piggies = data;
+        isLoading = false;
+        errorMessage = null;
+      });
+    } catch (e) {
+      setState(() {
+        errorMessage = e.toString();
+        isLoading = false;
+      });
+    }
+  }
+
+  Future<void> loadActivities() async {
+    try {
+      final data = await apiService.getRecentActivities();
+
+      setState(() {
+        recentActivities = data;
+      });
+    } catch (e) {
+      debugPrint(e.toString());
+    }
   }
 }

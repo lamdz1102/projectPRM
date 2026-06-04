@@ -21,9 +21,9 @@ class PiggyCard extends StatelessWidget {
   }
 
   Color getStatusColor() {
-    if (piggy.isBroken) return Colors.red;
-    if (piggy.status == 'Đã khóa') return Colors.grey;
-    if (piggy.status == 'Hoàn thành') return Colors.green;
+    if (piggy.isBroken || piggy.status == 'BROKEN') return Colors.redAccent;
+    if (piggy.status == 'LOCKED') return Colors.grey;
+    if (piggy.status == 'COMPLETED') return Colors.green;
     return Colors.pinkAccent;
   }
 
@@ -58,6 +58,8 @@ class PiggyCard extends StatelessWidget {
                   Expanded(
                     child: Text(
                       piggy.name,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -66,16 +68,19 @@ class PiggyCard extends StatelessWidget {
                   ),
 
                   IconButton(
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
                     onPressed: onDelete,
                     icon: const Icon(
                       Icons.delete_outline,
                       color: Colors.redAccent,
+                      size: 22,
                     ),
                   ),
 
                   Chip(
                     label: Text(
-                      piggy.status,
+                      piggy.displayStatus,
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 12,
