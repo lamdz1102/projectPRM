@@ -1,16 +1,49 @@
 import 'package:flutter/material.dart';
 import '../models/piggy.dart';
 import '../models/piggy_deposit.dart';
+import '../services/piggy_api_service.dart';
 
-class PiggyHistoryScreen extends StatelessWidget {
+class PiggyHistoryScreen extends StatefulWidget {
   final Piggy piggy;
-  final List<PiggyDeposit> deposits;
 
   const PiggyHistoryScreen({
     super.key,
     required this.piggy,
-    required this.deposits,
   });
+
+  @override
+  State<PiggyHistoryScreen> createState() => _PiggyHistoryScreenState();
+}
+
+class _PiggyHistoryScreenState extends State<PiggyHistoryScreen> {
+  final PiggyApiService apiService = PiggyApiService();
+
+  List<PiggyDeposit> deposits = [];
+  bool isLoading = true;
+  String? errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    loadDeposits();
+  }
+
+  Future<void> loadDeposits() async {
+    try {
+      final data = await apiService.getDeposits(widget.piggy.id);
+
+      setState(() {
+        deposits = data;
+        isLoading = false;
+        errorMessage = null;
+      });
+    } catch (e) {
+      setState(() {
+        errorMessage = e.toString();
+        isLoading = false;
+      });
+    }
+  }
 
   String formatMoney(double value) {
     return '${value.toStringAsFixed(0).replaceAllMapped(
@@ -25,10 +58,6 @@ class PiggyHistoryScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final piggyDeposits = deposits
-        .where((deposit) => deposit.piggyId == piggy.id)
-        .toList();
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Lịch sử bỏ tiền'),
@@ -38,7 +67,7 @@ class PiggyHistoryScreen extends StatelessWidget {
         child: Column(
           children: [
             Text(
-              piggy.name,
+              widget.piggy.name,
               style: const TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
@@ -48,7 +77,7 @@ class PiggyHistoryScreen extends StatelessWidget {
             const SizedBox(height: 8),
 
             Text(
-              'Tổng đã tiết kiệm: ${formatMoney(piggy.currentAmount)}',
+              'Tổng đã tiết kiệm: ${formatMoney(widget.piggy.currentAmount)}',
               style: const TextStyle(
                 color: Colors.black54,
               ),
@@ -57,44 +86,65 @@ class PiggyHistoryScreen extends StatelessWidget {
             const SizedBox(height: 20),
 
             Expanded(
-              child: piggyDeposits.isEmpty
+              child: isLoading
+                  ? const Center(
+                child: CircularProgressIndicator(),
+              )
+                  : errorMessage != null
+                  ? Center(
+                child: Text(
+                  errorMessage!,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Colors.redAccent,
+                  ),
+                ),
+              )
+                  : deposits.isEmpty
                   ? const Center(
                 child: Text(
                   'Chưa có lịch sử bỏ tiền nào.',
-                  style: TextStyle(color: Colors.black54),
+                  style: TextStyle(
+                    color: Colors.black54,
+                  ),
                 ),
               )
-                  : ListView.builder(
-                itemCount: piggyDeposits.length,
-                itemBuilder: (context, index) {
-                  final deposit = piggyDeposits[index];
+                  : RefreshIndicator(
+                onRefresh: loadDeposits,
+                child: ListView.builder(
+                  itemCount: deposits.length,
+                  itemBuilder: (context, index) {
+                    final deposit = deposits[index];
 
-                  return Card(
-                    margin: const EdgeInsets.only(bottom: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(18),
-                    ),
-                    child: ListTile(
-                      leading: const CircleAvatar(
-                        backgroundColor: Color(0xFFFFE4EF),
-                        child: Icon(
-                          Icons.add,
-                          color: Colors.pinkAccent,
+                    return Card(
+                      margin: const EdgeInsets.only(bottom: 14),
+                      color: const Color(0xFFFFEEF3),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                      child: ListTile(
+                        leading: const CircleAvatar(
+                          backgroundColor: Color(0xFFFFD6E5),
+                          child: Icon(
+                            Icons.add,
+                            color: Colors.pinkAccent,
+                          ),
                         ),
-                      ),
-                      title: Text(
-                        '+${formatMoney(deposit.amount)}',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
+                        title: Text(
+                          '+${formatMoney(deposit.amount)}',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
                         ),
+                        subtitle: Text(
+                          '${formatDate(deposit.date)}\n${deposit.note}',
+                        ),
+                        isThreeLine: true,
                       ),
-                      subtitle: Text(
-                        '${formatDate(deposit.date)}\n${deposit.note}',
-                      ),
-                      isThreeLine: true,
-                    ),
-                  );
-                },
+                    );
+                  },
+                ),
               ),
             ),
           ],

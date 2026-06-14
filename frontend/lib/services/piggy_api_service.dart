@@ -7,10 +7,10 @@ import '../models/activity_log.dart';
 
 class PiggyApiService {
   // Nếu chạy bằng Android Emulator thì dùng 10.0.2.2
-  static const String baseUrl = 'http://10.0.2.2:8080/api/piggies';
+  // static const String baseUrl = 'http://10.0.2.2:8080/api/piggies';
 
   // Nếu chạy bằng Chrome web thì đổi thành:
-  // static const String baseUrl = 'http://localhost:8080/api/piggies';
+  static const String baseUrl = 'http://localhost:8080/api/piggies';
 
   Future<List<Piggy>> getPiggies() async {
     final response = await http.get(Uri.parse(baseUrl));
@@ -25,6 +25,7 @@ class PiggyApiService {
 
   Future<Piggy> createPiggy({
     required String name,
+    required String avatar,
     required double targetAmount,
     required DateTime startDate,
     required DateTime endDate,
@@ -37,6 +38,7 @@ class PiggyApiService {
       },
       body: jsonEncode({
         'name': name,
+        'avatar': avatar,
         'targetAmount': targetAmount,
         'startDate': startDate.toIso8601String().split('T').first,
         'endDate': endDate.toIso8601String().split('T').first,
@@ -48,7 +50,11 @@ class PiggyApiService {
       return Piggy.fromJson(jsonDecode(response.body));
     }
 
-    throw Exception('Không thể tạo Piggy');
+    final errorMessage = utf8.decode(response.bodyBytes);
+
+    throw Exception(
+      errorMessage.isEmpty ? 'Không thể tạo Piggy' : errorMessage,
+    );
   }
 
   Future<Piggy> addMoney({

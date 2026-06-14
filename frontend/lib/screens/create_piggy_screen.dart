@@ -21,6 +21,19 @@ class _CreatePiggyScreenState extends State<CreatePiggyScreen> {
   DateTime? startDate;
   DateTime? endDate;
 
+  String selectedAvatar = '🐷';
+
+  final List<String> avatarOptions = [
+    '🐷',
+    '🐽',
+    '🐖',
+    '💰',
+    '🎯',
+    '🏦',
+    '💎',
+    '🧸',
+  ];
+
   Future<void> pickStartDate() async {
     final selectedDate = await showDatePicker(
       context: context,
@@ -93,6 +106,7 @@ class _CreatePiggyScreenState extends State<CreatePiggyScreen> {
     final newPiggy = Piggy(
       id: widget.nextId,
       name: name,
+      avatar: selectedAvatar,
       targetAmount: targetAmount,
       currentAmount: 0,
       startDate: startDate!,
@@ -128,6 +142,50 @@ class _CreatePiggyScreenState extends State<CreatePiggyScreen> {
               size: 90,
               color: Colors.pinkAccent,
             ),
+            const Text(
+              'Chọn avatar Piggy',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+
+            const SizedBox(height: 12),
+
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: avatarOptions.map((avatar) {
+                final isSelected = selectedAvatar == avatar;
+
+                return GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      selectedAvatar = avatar;
+                    });
+                  },
+                  child: Container(
+                    width: 54,
+                    height: 54,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: isSelected ? Colors.pinkAccent : Colors.pink.shade50,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: isSelected ? Colors.pinkAccent : Colors.pink.shade100,
+                        width: 2,
+                      ),
+                    ),
+                    child: Text(
+                      avatar,
+                      style: const TextStyle(fontSize: 28),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+
+            const SizedBox(height: 20),
             const SizedBox(height: 20),
             TextField(
               controller: nameController,

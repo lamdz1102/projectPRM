@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../models/piggy.dart';
 import 'piggy_history_screen.dart';
 import '../models/piggy_deposit.dart';
 import '../services/piggy_api_service.dart';
+import 'package:intl/intl.dart';
 
 class PiggyDetailScreen extends StatelessWidget {
   final Piggy piggy;
   final List<PiggyDeposit> deposits;
   final PiggyApiService apiService = PiggyApiService();
 
-   PiggyDetailScreen({
+  PiggyDetailScreen({
     super.key,
     required this.piggy,
     required this.deposits,
@@ -25,10 +27,26 @@ class PiggyDetailScreen extends StatelessWidget {
   void showAddMoneyDialog(BuildContext context) {
     final TextEditingController amountController = TextEditingController();
     final TextEditingController noteController = TextEditingController();
+    final List<int> quickAmounts = [
+      10000,
+      50000,
+      100000,
+      200000,
+      500000,
+    ];
+
+    String formatQuickAmount(int amount) {
+      return NumberFormat('#,###', 'vi_VN').format(amount).replaceAll(',', '.');
+    }
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(24),
+        ),
+      ),
       builder: (_) {
         return Padding(
           padding: EdgeInsets.only(
@@ -39,23 +57,58 @@ class PiggyDetailScreen extends StatelessWidget {
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Bỏ tiền vào Piggy',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
+              const Center(
+                child: Text(
+                  'Bỏ tiền vào Piggy',
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
 
               const SizedBox(height: 20),
 
+              const Text(
+                'Chọn nhanh số tiền',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+
+              const SizedBox(height: 10),
+
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: quickAmounts.map((amount) {
+                  return ActionChip(
+                    label: Text('${formatQuickAmount(amount)}đ'),
+                    onPressed: () {
+                      amountController.text = formatQuickAmount(amount);
+                      amountController.selection = TextSelection.collapsed(
+                        offset: amountController.text.length,
+                      );
+                    },
+                  );
+                }).toList(),
+              ),
+
+              const SizedBox(height: 16),
+
               TextField(
                 controller: amountController,
                 keyboardType: TextInputType.number,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  MoneyInputFormatter(),
+                ],
                 decoration: InputDecoration(
                   labelText: 'Số tiền',
-                  hintText: 'Ví dụ: 200000',
+                  hintText: 'Ví dụ: 200.000',
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16),
                   ),
@@ -66,6 +119,8 @@ class PiggyDetailScreen extends StatelessWidget {
 
               TextField(
                 controller: noteController,
+                keyboardType: TextInputType.text,
+                textInputAction: TextInputAction.done,
                 maxLines: 2,
                 decoration: InputDecoration(
                   labelText: 'Ghi chú',
@@ -83,7 +138,8 @@ class PiggyDetailScreen extends StatelessWidget {
                 height: 50,
                 child: ElevatedButton(
                   onPressed: () async {
-                    final amountText = amountController.text.trim();
+                    final amountText =
+                    amountController.text.replaceAll('.', '').trim();
                     final amount = double.tryParse(amountText);
                     final note = noteController.text.trim();
 
@@ -103,23 +159,27 @@ class PiggyDetailScreen extends StatelessWidget {
                         note: note,
                       );
 
-                      Navigator.pop(context); // đóng bottom sheet
+                      if (context.mounted) {
+                        Navigator.pop(context); // đóng bottom sheet
 
-                      Navigator.pop(context, {
-                        'action': 'add_money',
-                        'piggyId': piggy.id,
-                        'amount': amount,
-                        'note': note,
-                        'piggy': updatedPiggy,
-                      });
+                        Navigator.pop(context, {
+                          'action': 'add_money',
+                          'piggyId': piggy.id,
+                          'amount': amount,
+                          'note': note,
+                          'piggy': updatedPiggy,
+                        });
+                      }
                     } catch (e) {
-                      Navigator.pop(context);
+                      if (context.mounted) {
+                        Navigator.pop(context);
 
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Bỏ tiền thất bại: $e'),
-                        ),
-                      );
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Bỏ tiền thất bại: $e'),
+                          ),
+                        );
+                      }
                     }
                   },
                   child: const Text('Xác nhận'),
@@ -295,10 +355,20 @@ class PiggyDetailScreen extends StatelessWidget {
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            Icon(
-              piggy.isBroken ? Icons.delete_forever : Icons.savings,
-              size: 110,
-              color: piggy.isBroken ? Colors.redAccent : Colors.pinkAccent,
+            Container(
+              width: 120,
+              height: 120,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: piggy.isBroken
+                    ? Colors.red.shade100
+                    : Colors.pink.shade50,
+                shape: BoxShape.circle,
+              ),
+              child: Text(
+                piggy.isBroken ? '💥' : piggy.avatar,
+                style: const TextStyle(fontSize: 64),
+              ),
             ),
 
             const SizedBox(height: 16),
@@ -445,7 +515,6 @@ class PiggyDetailScreen extends StatelessWidget {
                     MaterialPageRoute(
                       builder: (_) => PiggyHistoryScreen(
                         piggy: piggy,
-                        deposits: deposits,
                       ),
                     ),
                   );
@@ -529,6 +598,32 @@ class _InfoBox extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class MoneyInputFormatter extends TextInputFormatter {
+  final NumberFormat formatter = NumberFormat("#,###", "vi_VN");
+
+  @override
+  TextEditingValue formatEditUpdate(
+      TextEditingValue oldValue,
+      TextEditingValue newValue,
+      ) {
+    String digits = newValue.text.replaceAll(RegExp(r'[^0-9]'), '');
+
+    if (digits.isEmpty) {
+      return const TextEditingValue(text: '');
+    }
+
+    String formatted =
+    formatter.format(int.parse(digits)).replaceAll(',', '.');
+
+    return TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(
+        offset: formatted.length,
       ),
     );
   }

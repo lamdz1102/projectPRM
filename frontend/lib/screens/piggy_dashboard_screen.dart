@@ -113,6 +113,7 @@ class _PiggyDashboardScreenState extends State<PiggyDashboardScreen> {
       try {
         final createdPiggy = await apiService.createPiggy(
           name: newPiggy.name,
+          avatar: newPiggy.avatar,
           targetAmount: newPiggy.targetAmount,
           startDate: newPiggy.startDate,
           endDate: newPiggy.endDate,
@@ -125,9 +126,11 @@ class _PiggyDashboardScreenState extends State<PiggyDashboardScreen> {
 
         await loadActivities();
       } catch (e) {
+        final message = e.toString().replaceFirst('Exception: ', '');
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Tạo Piggy thất bại: $e'),
+            content: Text(message),
           ),
         );
       }

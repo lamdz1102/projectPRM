@@ -49,9 +49,9 @@ class PiggyCard extends StatelessWidget {
                     backgroundColor: piggy.isBroken
                         ? Colors.red.shade100
                         : const Color(0xFFFFE4EF),
-                    child: Icon(
-                      piggy.isBroken ? Icons.delete_forever : Icons.savings,
-                      color: piggy.isBroken ? Colors.red : Colors.pinkAccent,
+                    child: Text(
+                      piggy.isBroken ? '💥' : piggy.avatar,
+                      style: const TextStyle(fontSize: 24),
                     ),
                   ),
                   const SizedBox(width: 12),

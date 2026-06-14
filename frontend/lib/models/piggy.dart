@@ -8,6 +8,7 @@ class Piggy {
   final String note;
   final bool isBroken;
   final String status;
+  final String avatar;
 
   Piggy({
     required this.id,
@@ -19,6 +20,7 @@ class Piggy {
     required this.note,
     required this.isBroken,
     required this.status,
+    required this.avatar,
   });
 
   factory Piggy.fromJson(Map<String, dynamic> json) {
@@ -32,12 +34,14 @@ class Piggy {
       note: json['note'] ?? '',
       isBroken: json['isBroken'] ?? false,
       status: json['status'] ?? 'ACTIVE',
+      avatar: json['avatar'] ?? '🐷',
     );
   }
 
   Map<String, dynamic> toCreateJson() {
     return {
       'name': name,
+      'avatar': avatar,
       'targetAmount': targetAmount,
       'startDate': startDate.toIso8601String().split('T').first,
       'endDate': endDate.toIso8601String().split('T').first,
@@ -79,6 +83,7 @@ class Piggy {
     String? note,
     bool? isBroken,
     String? status,
+    String? avatar,
   }) {
     return Piggy(
       id: id ?? this.id,
@@ -90,6 +95,7 @@ class Piggy {
       note: note ?? this.note,
       isBroken: isBroken ?? this.isBroken,
       status: status ?? this.status,
+      avatar: avatar ?? this.avatar,
     );
   }
 }
