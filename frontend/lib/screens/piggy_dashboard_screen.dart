@@ -6,6 +6,8 @@ import 'piggy_detail_screen.dart';
 import '../models/activity_log.dart';
 import '../models/piggy_deposit.dart';
 import '../services/piggy_api_service.dart';
+import '../services/notification_rule_service.dart';
+import '../services/notification_service.dart';
 
 class PiggyDashboardScreen extends StatefulWidget {
   const PiggyDashboardScreen({super.key});
@@ -22,6 +24,102 @@ class _PiggyDashboardScreenState extends State<PiggyDashboardScreen> {
   final PiggyApiService apiService = PiggyApiService();
 
   List<ActivityLog> recentActivities = [];
+
+  Piggy? findPiggyById(int piggyId) {
+    for (final piggy in piggies) {
+      if (piggy.id == piggyId) return piggy;
+    }
+    return null;
+  }
+
+  Future<void> openPiggyFromNotification(int piggyId) async {
+    var piggy = findPiggyById(piggyId);
+
+    if (piggy == null) {
+      await loadPiggies();
+      piggy = findPiggyById(piggyId);
+    }
+
+    if (!mounted) return;
+
+    if (piggy == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Không tìm thấy Piggy từ notification'),
+        ),
+      );
+      return;
+    }
+
+    final targetPiggy = piggy;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await Future.delayed(const Duration(milliseconds: 300));
+
+      if (!mounted) return;
+
+      await openPiggyDetail(targetPiggy);
+    });
+  }
+
+  Future<void> handleInitialNotificationTap() async {
+    final pendingPiggyId = NotificationService.instance.consumePendingPiggyId();
+
+    if (pendingPiggyId == null) return;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await Future.delayed(const Duration(milliseconds: 300));
+
+      if (!mounted) return;
+
+      await openPiggyFromNotification(pendingPiggyId);
+    });
+  }
+
+  Future<void> showNotificationSettings() async {
+    var enabled = await NotificationRuleService.isEnabled();
+
+    if (!mounted) return;
+
+    showDialog(
+      context: context,
+      builder: (_) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('Cài đặt notification'),
+              content: SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Bật notification theo ngữ cảnh'),
+                subtitle: const Text(
+                    'Nhắc khi Piggy đạt 50%, 80%, hoàn thành, sắp đến hạn, chậm tiến độ, quá hạn và nhắc tiết kiệm mỗi ngày.'
+                ),
+                value: enabled,
+                onChanged: (value) async {
+                  await NotificationRuleService.setEnabled(value);
+
+                  setDialogState(() {
+                    enabled = value;
+                  });
+
+                  if (value) {
+                    await NotificationRuleService.checkPiggies(piggies);
+                    await NotificationRuleService.scheduleDailySavingReminder();
+                  }
+                },
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Đóng'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
 
   String formatMoney(double value) {
     return '${value.toStringAsFixed(0).replaceAllMapped(
@@ -55,6 +153,8 @@ class _PiggyDashboardScreenState extends State<PiggyDashboardScreen> {
         return Icons.delete_outline;
       case 'create_piggy':
         return Icons.add_circle_outline;
+      case 'context_notification':
+        return Icons.notifications_active;
       default:
         return Icons.notifications_none;
     }
@@ -70,6 +170,8 @@ class _PiggyDashboardScreenState extends State<PiggyDashboardScreen> {
         return Colors.redAccent;
       case 'create_piggy':
         return Colors.pinkAccent;
+      case 'context_notification':
+        return Colors.blueAccent;
       default:
         return Colors.grey;
     }
@@ -125,6 +227,8 @@ class _PiggyDashboardScreenState extends State<PiggyDashboardScreen> {
         });
 
         await loadActivities();
+        await NotificationRuleService.checkPiggy(createdPiggy);
+        await NotificationRuleService.scheduleDeadlineReminder(createdPiggy);
       } catch (e) {
         final message = e.toString().replaceFirst('Exception: ', '');
 
@@ -236,6 +340,8 @@ class _PiggyDashboardScreenState extends State<PiggyDashboardScreen> {
                     piggies.removeWhere((item) => item.id == piggy.id);
                   });
 
+                  await NotificationRuleService.cancelPiggySchedules(piggy.id);
+                  await NotificationRuleService.clearPiggyFlags(piggy.id);
                   await loadActivities();
 
                   Navigator.pop(context);
@@ -256,7 +362,7 @@ class _PiggyDashboardScreenState extends State<PiggyDashboardScreen> {
                 backgroundColor: Colors.redAccent,
                 foregroundColor: Colors.white,
               ),
-              onPressed: () {
+              onPressed: () async {
                 setState(() {
                   piggies.removeWhere((item) => item.id == piggy.id);
                 });
@@ -266,6 +372,9 @@ class _PiggyDashboardScreenState extends State<PiggyDashboardScreen> {
                   piggyName: piggy.name,
                   message: 'Bạn đã xóa ${piggy.name}',
                 );
+
+                await NotificationRuleService.cancelPiggySchedules(piggy.id);
+                await NotificationRuleService.clearPiggyFlags(piggy.id);
 
                 Navigator.pop(context);
               },
@@ -345,11 +454,15 @@ class _PiggyDashboardScreenState extends State<PiggyDashboardScreen> {
         piggyName: deletedPiggy.name,
         message: 'Bạn đã xóa ${deletedPiggy.name}',
       );
+
+      await NotificationRuleService.cancelPiggySchedules(deletedPiggy.id);
+      await NotificationRuleService.clearPiggyFlags(deletedPiggy.id);
     }
 
     if (result is Map && result['action'] == 'add_money') {
       final piggyId = result['piggyId'] as int;
       final updatedPiggy = result['piggy'] as Piggy;
+      final oldPiggy = findPiggyById(piggyId);
 
       setState(() {
         final index = piggies.indexWhere((item) => item.id == piggyId);
@@ -359,6 +472,15 @@ class _PiggyDashboardScreenState extends State<PiggyDashboardScreen> {
       });
 
       await loadActivities();
+
+      if (oldPiggy != null) {
+        await NotificationRuleService.checkAfterDeposit(
+          oldPiggy: oldPiggy,
+          newPiggy: updatedPiggy,
+        );
+      } else {
+        await NotificationRuleService.checkPiggy(updatedPiggy);
+      }
     }
   }
 
@@ -406,8 +528,8 @@ class _PiggyDashboardScreenState extends State<PiggyDashboardScreen> {
             ],
           ),
           IconButton(
-            onPressed: () {},
-            icon: const Icon(Icons.person_outline),
+            onPressed: showNotificationSettings,
+            icon: const Icon(Icons.settings_outlined),
           ),
         ],
       ),
@@ -542,10 +664,35 @@ class _PiggyDashboardScreenState extends State<PiggyDashboardScreen> {
   }
 
   @override
+  @override
   void initState() {
     super.initState();
+
+    NotificationService.instance.onPiggyNotificationTap = openPiggyFromNotification;
+
+    NotificationRuleService.onContextNotificationSent = ({
+      required int piggyId,
+      required String piggyName,
+      required String title,
+      required String body,
+    }) async {
+      if (!mounted) return;
+
+      addActivity(
+        type: 'context_notification',
+        piggyName: piggyName,
+        message: '$title\n$body',
+      );
+    };
+
     loadPiggies();
-    loadActivities();
+  }
+
+  @override
+  void dispose() {
+    NotificationService.instance.onPiggyNotificationTap = null;
+    NotificationRuleService.onContextNotificationSent = null;
+    super.dispose();
   }
 
   Future<void> loadPiggies() async {
@@ -557,6 +704,11 @@ class _PiggyDashboardScreenState extends State<PiggyDashboardScreen> {
         isLoading = false;
         errorMessage = null;
       });
+
+      await loadActivities();
+      await NotificationRuleService.checkPiggies(data);
+      await NotificationRuleService.scheduleDailySavingReminder();
+      await handleInitialNotificationTap();
     } catch (e) {
       setState(() {
         errorMessage = e.toString();
