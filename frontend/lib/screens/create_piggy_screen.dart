@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/piggy.dart';
+import '../widgets/saving_plan_card.dart';
 
 class CreatePiggyScreen extends StatefulWidget {
   final int nextId;
@@ -69,6 +70,40 @@ class _CreatePiggyScreenState extends State<CreatePiggyScreen> {
     return '${date.day}/${date.month}/${date.year}';
   }
 
+  double? get parsedTargetAmount {
+    final rawValue = targetAmountController.text
+        .replaceAll('.', '')
+        .replaceAll(',', '')
+        .trim();
+    return double.tryParse(rawValue);
+  }
+
+  bool get canPreviewSavingPlan {
+    final targetAmount = parsedTargetAmount;
+    return targetAmount != null &&
+        targetAmount > 0 &&
+        startDate != null &&
+        endDate != null &&
+        !endDate!.isBefore(startDate!);
+  }
+
+  Piggy get previewPiggy {
+    return Piggy(
+      id: 0,
+      name: nameController.text.trim().isEmpty
+          ? 'Piggy mới'
+          : nameController.text.trim(),
+      avatar: selectedAvatar,
+      targetAmount: parsedTargetAmount ?? 0,
+      currentAmount: 0,
+      startDate: startDate!,
+      endDate: endDate!,
+      note: noteController.text.trim(),
+      isBroken: false,
+      status: 'ACTIVE',
+    );
+  }
+
   void createPiggy() {
     final name = nameController.text.trim();
     final targetText = targetAmountController.text.trim();
@@ -83,7 +118,9 @@ class _CreatePiggyScreenState extends State<CreatePiggyScreen> {
       return;
     }
 
-    final targetAmount = double.tryParse(targetText);
+    final targetAmount = double.tryParse(
+      targetText.replaceAll('.', '').replaceAll(',', ''),
+    );
 
     if (targetAmount == null || targetAmount <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -189,6 +226,7 @@ class _CreatePiggyScreenState extends State<CreatePiggyScreen> {
             const SizedBox(height: 20),
             TextField(
               controller: nameController,
+              onChanged: (_) => setState(() {}),
               decoration: InputDecoration(
                 labelText: 'Tên Piggy',
                 hintText: 'Ví dụ: Heo mua laptop',
@@ -201,6 +239,7 @@ class _CreatePiggyScreenState extends State<CreatePiggyScreen> {
             TextField(
               controller: targetAmountController,
               keyboardType: TextInputType.number,
+              onChanged: (_) => setState(() {}),
               decoration: InputDecoration(
                 labelText: 'Số tiền mục tiêu',
                 hintText: 'Ví dụ: 15000000',
@@ -235,6 +274,13 @@ class _CreatePiggyScreenState extends State<CreatePiggyScreen> {
                 ),
               ),
             ),
+            if (canPreviewSavingPlan) ...[
+              const SizedBox(height: 16),
+              SavingPlanCard(
+                piggy: previewPiggy,
+                isPreview: true,
+              ),
+            ],
             const SizedBox(height: 16),
             TextField(
               controller: noteController,

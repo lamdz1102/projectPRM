@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/piggy.dart';
+import '../models/saving_plan.dart';
+import '../services/saving_plan_service.dart';
 
 class PiggyCard extends StatelessWidget {
   final Piggy piggy;
@@ -27,8 +29,25 @@ class PiggyCard extends StatelessWidget {
     return Colors.pinkAccent;
   }
 
+  String getPlanSummary(SavingPlan plan) {
+    if (piggy.isBroken || piggy.status == 'BROKEN') {
+      return 'Piggy đã kết thúc';
+    }
+
+    switch (plan.status) {
+      case SavingPlanStatus.completed:
+        return 'Đã hoàn thành mục tiêu';
+      case SavingPlanStatus.expired:
+        return 'Đã quá hạn, còn thiếu ${formatMoney(plan.remainingAmount)}';
+      default:
+        return 'Gợi ý: ${formatMoney(plan.requiredPerDay)}/ngày';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final savingPlan = SavingPlanService.calculate(piggy);
+
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
       elevation: 2,
@@ -120,6 +139,29 @@ class PiggyCard extends StatelessWidget {
                 style: const TextStyle(
                   color: Colors.black54,
                 ),
+              ),
+
+              const SizedBox(height: 8),
+
+              Row(
+                children: [
+                  Icon(
+                    Icons.auto_graph,
+                    size: 16,
+                    color: getStatusColor(),
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      getPlanSummary(savingPlan),
+                      style: TextStyle(
+                        color: getStatusColor(),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),

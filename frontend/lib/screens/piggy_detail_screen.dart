@@ -5,6 +5,7 @@ import 'piggy_history_screen.dart';
 import '../models/piggy_deposit.dart';
 import '../services/piggy_api_service.dart';
 import 'package:intl/intl.dart';
+import '../widgets/saving_plan_card.dart';
 
 class PiggyDetailScreen extends StatelessWidget {
   final Piggy piggy;
@@ -459,6 +460,10 @@ class PiggyDetailScreen extends StatelessWidget {
             ),
 
             const SizedBox(height: 20),
+
+            if (!piggy.isBroken) SavingPlanCard(piggy: piggy),
+
+            if (!piggy.isBroken) const SizedBox(height: 20),
 
             if (piggy.isBroken)
               Container(
