@@ -1,35 +1,106 @@
 import 'package:flutter/material.dart';
-import '../models/piggy.dart';
-import '../widgets/piggy_card.dart';
-import 'create_piggy_screen.dart';
-import 'piggy_detail_screen.dart';
+
 import '../models/activity_log.dart';
+import '../models/piggy.dart';
 import '../models/piggy_deposit.dart';
-import '../services/piggy_api_service.dart';
 import '../services/notification_rule_service.dart';
 import '../services/notification_service.dart';
+import '../services/piggy_api_service.dart';
+import '../widgets/piggy_card.dart';
+import 'crash_demo_screen.dart';
+import 'create_piggy_screen.dart';
+import 'piggy_detail_screen.dart';
 
 class PiggyDashboardScreen extends StatefulWidget {
   const PiggyDashboardScreen({super.key});
 
   @override
-  State<PiggyDashboardScreen> createState() => _PiggyDashboardScreenState();
+  State<PiggyDashboardScreen> createState() =>
+      _PiggyDashboardScreenState();
 }
 
 class _PiggyDashboardScreenState extends State<PiggyDashboardScreen> {
+  final PiggyApiService apiService = PiggyApiService();
+
   List<Piggy> piggies = [];
+  List<ActivityLog> recentActivities = [];
+
   bool isLoading = true;
   String? errorMessage;
 
-  final PiggyApiService apiService = PiggyApiService();
+  final List<PiggyDeposit> deposits = [
+    PiggyDeposit(
+      id: 1,
+      piggyId: 1,
+      amount: 200000,
+      date: DateTime(2026, 5, 28),
+      note: 'Tiền tiết kiệm tuần này',
+    ),
+    PiggyDeposit(
+      id: 2,
+      piggyId: 1,
+      amount: 500000,
+      date: DateTime(2026, 5, 20),
+      note: 'Tiền làm thêm',
+    ),
+    PiggyDeposit(
+      id: 3,
+      piggyId: 1,
+      amount: 100000,
+      date: DateTime(2026, 5, 15),
+      note: 'Bớt ăn vặt',
+    ),
+  ];
 
-  List<ActivityLog> recentActivities = [];
+  @override
+  void initState() {
+    super.initState();
+
+    NotificationService.instance.onPiggyNotificationTap =
+        openPiggyFromNotification;
+
+    NotificationRuleService.onContextNotificationSent = ({
+      required int piggyId,
+      required String piggyName,
+      required String title,
+      required String body,
+    }) async {
+      if (!mounted) return;
+
+      addActivity(
+        type: 'context_notification',
+        piggyName: piggyName,
+        message: '$title\n$body',
+      );
+    };
+
+    loadPiggies();
+  }
+
+  @override
+  void dispose() {
+    NotificationService.instance.onPiggyNotificationTap = null;
+    NotificationRuleService.onContextNotificationSent = null;
+    super.dispose();
+  }
 
   Piggy? findPiggyById(int piggyId) {
     for (final piggy in piggies) {
-      if (piggy.id == piggyId) return piggy;
+      if (piggy.id == piggyId) {
+        return piggy;
+      }
     }
+
     return null;
+  }
+
+  Future<void> openCrashDemoScreen() async {
+    await Navigator.push<void>(
+      context,
+      MaterialPageRoute<void>(
+        builder: (_) => const CrashDemoScreen(),
+      ),
+    );
   }
 
   Future<void> openPiggyFromNotification(int piggyId) async {
@@ -63,7 +134,8 @@ class _PiggyDashboardScreenState extends State<PiggyDashboardScreen> {
   }
 
   Future<void> handleInitialNotificationTap() async {
-    final pendingPiggyId = NotificationService.instance.consumePendingPiggyId();
+    final pendingPiggyId =
+    NotificationService.instance.consumePendingPiggyId();
 
     if (pendingPiggyId == null) return;
 
@@ -81,7 +153,7 @@ class _PiggyDashboardScreenState extends State<PiggyDashboardScreen> {
 
     if (!mounted) return;
 
-    showDialog(
+    await showDialog<void>(
       context: context,
       builder: (_) {
         return StatefulBuilder(
@@ -92,7 +164,9 @@ class _PiggyDashboardScreenState extends State<PiggyDashboardScreen> {
                 contentPadding: EdgeInsets.zero,
                 title: const Text('Bật notification theo ngữ cảnh'),
                 subtitle: const Text(
-                    'Nhắc khi Piggy đạt 50%, 80%, hoàn thành, sắp đến hạn, chậm tiến độ, quá hạn và nhắc tiết kiệm mỗi ngày.'
+                  'Nhắc khi Piggy đạt 50%, 80%, hoàn thành, '
+                      'sắp đến hạn, chậm tiến độ, quá hạn và '
+                      'nhắc tiết kiệm mỗi ngày.',
                 ),
                 value: enabled,
                 onChanged: (value) async {
@@ -104,7 +178,8 @@ class _PiggyDashboardScreenState extends State<PiggyDashboardScreen> {
 
                   if (value) {
                     await NotificationRuleService.checkPiggies(piggies);
-                    await NotificationRuleService.scheduleDailySavingReminder();
+                    await NotificationRuleService
+                        .scheduleDailySavingReminder();
                   }
                 },
               ),
@@ -134,13 +209,17 @@ class _PiggyDashboardScreenState extends State<PiggyDashboardScreen> {
 
     if (difference.inMinutes < 1) {
       return 'Vừa xong';
-    } else if (difference.inMinutes < 60) {
-      return '${difference.inMinutes} phút trước';
-    } else if (difference.inHours < 24) {
-      return '${difference.inHours} giờ trước';
-    } else {
-      return '${difference.inDays} ngày trước';
     }
+
+    if (difference.inMinutes < 60) {
+      return '${difference.inMinutes} phút trước';
+    }
+
+    if (difference.inHours < 24) {
+      return '${difference.inHours} giờ trước';
+    }
+
+    return '${difference.inDays} ngày trước';
   }
 
   IconData getActivityIcon(String type) {
@@ -183,6 +262,8 @@ class _PiggyDashboardScreenState extends State<PiggyDashboardScreen> {
     double? amount,
     required String message,
   }) {
+    if (!mounted) return;
+
     setState(() {
       recentActivities.insert(
         0,
@@ -204,49 +285,55 @@ class _PiggyDashboardScreenState extends State<PiggyDashboardScreen> {
   Future<void> openCreatePiggyScreen() async {
     final newPiggy = await Navigator.push<Piggy>(
       context,
-      MaterialPageRoute(
+      MaterialPageRoute<Piggy>(
         builder: (_) => CreatePiggyScreen(
           nextId: piggies.isEmpty ? 1 : piggies.last.id + 1,
         ),
       ),
     );
 
-    if (newPiggy != null) {
-      try {
-        final createdPiggy = await apiService.createPiggy(
-          name: newPiggy.name,
-          avatar: newPiggy.avatar,
-          targetAmount: newPiggy.targetAmount,
-          startDate: newPiggy.startDate,
-          endDate: newPiggy.endDate,
-          note: newPiggy.note,
-        );
+    if (newPiggy == null) return;
 
-        setState(() {
-          piggies.add(createdPiggy);
-        });
+    try {
+      final createdPiggy = await apiService.createPiggy(
+        name: newPiggy.name,
+        avatar: newPiggy.avatar,
+        targetAmount: newPiggy.targetAmount,
+        startDate: newPiggy.startDate,
+        endDate: newPiggy.endDate,
+        note: newPiggy.note,
+      );
 
-        await loadActivities();
-        await NotificationRuleService.checkPiggy(createdPiggy);
-        await NotificationRuleService.scheduleDeadlineReminder(createdPiggy);
-      } catch (e) {
-        final message = e.toString().replaceFirst('Exception: ', '');
+      if (!mounted) return;
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(message),
-          ),
-        );
-      }
+      setState(() {
+        piggies.add(createdPiggy);
+      });
+
+      await loadActivities();
+      await NotificationRuleService.checkPiggy(createdPiggy);
+      await NotificationRuleService.scheduleDeadlineReminder(createdPiggy);
+    } catch (error) {
+      if (!mounted) return;
+
+      final message = error.toString().replaceFirst('Exception: ', '');
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+        ),
+      );
     }
   }
 
   void showRecentActivities() {
-    showModalBottomSheet(
+    showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(24),
+        ),
       ),
       builder: (_) {
         final displayActivities = recentActivities.take(10).toList();
@@ -295,7 +382,8 @@ class _PiggyDashboardScreenState extends State<PiggyDashboardScreen> {
                         contentPadding: EdgeInsets.zero,
                         leading: CircleAvatar(
                           backgroundColor:
-                          getActivityColor(activity.type).withOpacity(0.15),
+                          getActivityColor(activity.type)
+                              .withOpacity(0.15),
                           child: Icon(
                             getActivityIcon(activity.type),
                             color: getActivityColor(activity.type),
@@ -307,7 +395,9 @@ class _PiggyDashboardScreenState extends State<PiggyDashboardScreen> {
                             fontWeight: FontWeight.w500,
                           ),
                         ),
-                        subtitle: Text(formatActivityTime(activity.time)),
+                        subtitle: Text(
+                          formatActivityTime(activity.time),
+                        ),
                       );
                     },
                   ),
@@ -320,10 +410,10 @@ class _PiggyDashboardScreenState extends State<PiggyDashboardScreen> {
     );
   }
 
-  void showDeletePiggyDialog(Piggy piggy) {
-    showDialog(
+  Future<void> showDeletePiggyDialog(Piggy piggy) async {
+    await showDialog<void>(
       context: context,
-      builder: (_) {
+      builder: (dialogContext) {
         return AlertDialog(
           title: const Text('Xóa Piggy'),
           content: Text(
@@ -332,29 +422,7 @@ class _PiggyDashboardScreenState extends State<PiggyDashboardScreen> {
           ),
           actions: [
             TextButton(
-              onPressed: () async {
-                try {
-                  await apiService.deletePiggy(piggy.id);
-
-                  setState(() {
-                    piggies.removeWhere((item) => item.id == piggy.id);
-                  });
-
-                  await NotificationRuleService.cancelPiggySchedules(piggy.id);
-                  await NotificationRuleService.clearPiggyFlags(piggy.id);
-                  await loadActivities();
-
-                  Navigator.pop(context);
-                } catch (e) {
-                  Navigator.pop(context);
-
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Xóa Piggy thất bại: $e'),
-                    ),
-                  );
-                }
-              },
+              onPressed: () => Navigator.pop(dialogContext),
               child: const Text('Hủy'),
             ),
             ElevatedButton(
@@ -363,20 +431,38 @@ class _PiggyDashboardScreenState extends State<PiggyDashboardScreen> {
                 foregroundColor: Colors.white,
               ),
               onPressed: () async {
-                setState(() {
-                  piggies.removeWhere((item) => item.id == piggy.id);
-                });
+                try {
+                  await apiService.deletePiggy(piggy.id);
+                  await NotificationRuleService.cancelPiggySchedules(
+                    piggy.id,
+                  );
+                  await NotificationRuleService.clearPiggyFlags(
+                    piggy.id,
+                  );
 
-                addActivity(
-                  type: 'delete_piggy',
-                  piggyName: piggy.name,
-                  message: 'Bạn đã xóa ${piggy.name}',
-                );
+                  if (!mounted) return;
 
-                await NotificationRuleService.cancelPiggySchedules(piggy.id);
-                await NotificationRuleService.clearPiggyFlags(piggy.id);
+                  setState(() {
+                    piggies.removeWhere(
+                          (item) => item.id == piggy.id,
+                    );
+                  });
 
-                Navigator.pop(context);
+                  Navigator.pop(dialogContext);
+                  await loadActivities();
+                } catch (error) {
+                  if (!mounted) return;
+
+                  Navigator.pop(dialogContext);
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'Xóa Piggy thất bại: $error',
+                      ),
+                    ),
+                  );
+                }
               },
               child: const Text('Xóa'),
             ),
@@ -386,46 +472,33 @@ class _PiggyDashboardScreenState extends State<PiggyDashboardScreen> {
     );
   }
 
-  final List<PiggyDeposit> deposits = [
-    PiggyDeposit(
-      id: 1,
-      piggyId: 1,
-      amount: 200000,
-      date: DateTime(2026, 5, 28),
-      note: 'Tiền tiết kiệm tuần này',
-    ),
-    PiggyDeposit(
-      id: 2,
-      piggyId: 1,
-      amount: 500000,
-      date: DateTime(2026, 5, 20),
-      note: 'Tiền làm thêm',
-    ),
-    PiggyDeposit(
-      id: 3,
-      piggyId: 1,
-      amount: 100000,
-      date: DateTime(2026, 5, 15),
-      note: 'Bớt ăn vặt',
-    ),
-  ];
-
   Future<void> openPiggyDetail(Piggy piggy) async {
-    final result = await Navigator.push(
+    final result = await Navigator.push<Object?>(
       context,
-      MaterialPageRoute(
+      MaterialPageRoute<Object?>(
         builder: (_) => PiggyDetailScreen(
           piggy: piggy,
-          deposits: deposits.where((deposit) => deposit.piggyId == piggy.id).toList(),
+          deposits: deposits
+              .where(
+                (deposit) => deposit.piggyId == piggy.id,
+          )
+              .toList(),
         ),
       ),
     );
 
+    if (!mounted) return;
+
     if (result is Piggy) {
-      final oldPiggy = piggies.firstWhere((item) => item.id == result.id);
+      final oldPiggy = piggies.firstWhere(
+            (item) => item.id == result.id,
+      );
 
       setState(() {
-        final index = piggies.indexWhere((item) => item.id == result.id);
+        final index = piggies.indexWhere(
+              (item) => item.id == result.id,
+        );
+
         if (index != -1) {
           piggies[index] = result;
         }
@@ -446,7 +519,9 @@ class _PiggyDashboardScreenState extends State<PiggyDashboardScreen> {
       );
 
       setState(() {
-        piggies.removeWhere((item) => item.id == result['id']);
+        piggies.removeWhere(
+              (item) => item.id == result['id'],
+        );
       });
 
       addActivity(
@@ -455,8 +530,12 @@ class _PiggyDashboardScreenState extends State<PiggyDashboardScreen> {
         message: 'Bạn đã xóa ${deletedPiggy.name}',
       );
 
-      await NotificationRuleService.cancelPiggySchedules(deletedPiggy.id);
-      await NotificationRuleService.clearPiggyFlags(deletedPiggy.id);
+      await NotificationRuleService.cancelPiggySchedules(
+        deletedPiggy.id,
+      );
+      await NotificationRuleService.clearPiggyFlags(
+        deletedPiggy.id,
+      );
     }
 
     if (result is Map && result['action'] == 'add_money') {
@@ -465,7 +544,10 @@ class _PiggyDashboardScreenState extends State<PiggyDashboardScreen> {
       final oldPiggy = findPiggyById(piggyId);
 
       setState(() {
-        final index = piggies.indexWhere((item) => item.id == piggyId);
+        final index = piggies.indexWhere(
+              (item) => item.id == piggyId,
+        );
+
         if (index != -1) {
           piggies[index] = updatedPiggy;
         }
@@ -497,9 +579,17 @@ class _PiggyDashboardScreenState extends State<PiggyDashboardScreen> {
       appBar: AppBar(
         title: const Text('Piggy Bank'),
         actions: [
+          IconButton(
+            tooltip: 'Crash Monitoring Demo',
+            onPressed: openCrashDemoScreen,
+            icon: const Icon(
+              Icons.bug_report_outlined,
+            ),
+          ),
           Stack(
             children: [
               IconButton(
+                tooltip: 'Hoạt động gần đây',
                 onPressed: showRecentActivities,
                 icon: const Icon(Icons.notifications_none),
               ),
@@ -528,6 +618,7 @@ class _PiggyDashboardScreenState extends State<PiggyDashboardScreen> {
             ],
           ),
           IconButton(
+            tooltip: 'Cài đặt notification',
             onPressed: showNotificationSettings,
             icon: const Icon(Icons.settings_outlined),
           ),
@@ -623,15 +714,20 @@ class _PiggyDashboardScreenState extends State<PiggyDashboardScreen> {
                 child: Text(
                   errorMessage!,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(color: Colors.redAccent),
+                  style: const TextStyle(
+                    color: Colors.redAccent,
+                  ),
                 ),
               )
                   : piggies.isEmpty
                   ? const Center(
                 child: Text(
-                  'Chưa có Piggy nào.\nHãy tạo Piggy đầu tiên của bạn!',
+                  'Chưa có Piggy nào.\n'
+                      'Hãy tạo Piggy đầu tiên của bạn!',
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.black54),
+                  style: TextStyle(
+                    color: Colors.black54,
+                  ),
                 ),
               )
                   : ListView.builder(
@@ -663,41 +759,11 @@ class _PiggyDashboardScreenState extends State<PiggyDashboardScreen> {
     );
   }
 
-  @override
-  @override
-  void initState() {
-    super.initState();
-
-    NotificationService.instance.onPiggyNotificationTap = openPiggyFromNotification;
-
-    NotificationRuleService.onContextNotificationSent = ({
-      required int piggyId,
-      required String piggyName,
-      required String title,
-      required String body,
-    }) async {
-      if (!mounted) return;
-
-      addActivity(
-        type: 'context_notification',
-        piggyName: piggyName,
-        message: '$title\n$body',
-      );
-    };
-
-    loadPiggies();
-  }
-
-  @override
-  void dispose() {
-    NotificationService.instance.onPiggyNotificationTap = null;
-    NotificationRuleService.onContextNotificationSent = null;
-    super.dispose();
-  }
-
   Future<void> loadPiggies() async {
     try {
       final data = await apiService.getPiggies();
+
+      if (!mounted) return;
 
       setState(() {
         piggies = data;
@@ -709,9 +775,11 @@ class _PiggyDashboardScreenState extends State<PiggyDashboardScreen> {
       await NotificationRuleService.checkPiggies(data);
       await NotificationRuleService.scheduleDailySavingReminder();
       await handleInitialNotificationTap();
-    } catch (e) {
+    } catch (error) {
+      if (!mounted) return;
+
       setState(() {
-        errorMessage = e.toString();
+        errorMessage = error.toString();
         isLoading = false;
       });
     }
@@ -721,11 +789,13 @@ class _PiggyDashboardScreenState extends State<PiggyDashboardScreen> {
     try {
       final data = await apiService.getRecentActivities();
 
+      if (!mounted) return;
+
       setState(() {
         recentActivities = data;
       });
-    } catch (e) {
-      debugPrint(e.toString());
+    } catch (error) {
+      debugPrint(error.toString());
     }
   }
 }

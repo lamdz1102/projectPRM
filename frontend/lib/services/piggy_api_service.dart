@@ -7,10 +7,10 @@ import '../models/activity_log.dart';
 
 class PiggyApiService {
   // Nếu chạy bằng Android Emulator thì dùng 10.0.2.2
-  // static const String baseUrl = 'http://10.0.2.2:8080/api/piggies';
+  static const String baseUrl = 'http://10.0.2.2:8080/api/piggies';
 
   // Nếu chạy bằng Chrome web thì đổi thành:
-  static const String baseUrl = 'http://localhost:8080/api/piggies';
+  // static const String baseUrl = 'http://localhost:8080/api/piggies';
 
   Future<List<Piggy>> getPiggies() async {
     final response = await http.get(Uri.parse(baseUrl));
