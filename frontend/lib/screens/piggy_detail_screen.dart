@@ -6,6 +6,8 @@ import '../models/piggy_deposit.dart';
 import '../services/piggy_api_service.dart';
 import 'package:intl/intl.dart';
 import '../widgets/saving_plan_card.dart';
+import '../services/piggy_pet_service.dart';
+import '../widgets/piggy_pet_card.dart';
 
 class PiggyDetailScreen extends StatelessWidget {
   final Piggy piggy;
@@ -23,6 +25,78 @@ class PiggyDetailScreen extends StatelessWidget {
       RegExp(r'(\d)(?=(\d{3})+(?!\d))'),
           (match) => '${match[1]}.',
     )}đ';
+  }
+
+  Future<void> showEvolutionDialog(
+      BuildContext context, {
+        required int oldLevel,
+        required int newLevel,
+      }) async {
+    final oldEmoji = PiggyPetService.stageEmojiForLevel(oldLevel);
+    final newEmoji = PiggyPetService.stageEmojiForLevel(newLevel);
+    final newStage = PiggyPetService.stageNameForLevel(newLevel);
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+          content: TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0.6, end: 1),
+            duration: const Duration(milliseconds: 700),
+            curve: Curves.elasticOut,
+            builder: (context, scale, child) {
+              return Transform.scale(
+                scale: scale,
+                child: child,
+              );
+            },
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  '🎉 PIGGY ĐÃ TIẾN HÓA!',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  '$oldEmoji  ➜  $newEmoji',
+                  style: const TextStyle(fontSize: 54),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Cấp $newLevel • $newStage',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Khoản tiết kiệm vừa rồi đã giúp Piggy lớn thêm!',
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+          actionsAlignment: MainAxisAlignment.center,
+          actions: [
+            ElevatedButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Tuyệt vời'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   void showAddMoneyDialog(BuildContext context) {
@@ -161,7 +235,24 @@ class PiggyDetailScreen extends StatelessWidget {
                       );
 
                       if (context.mounted) {
+                        final oldLevel = PiggyPetService.levelFromProgress(
+                          piggy.progress,
+                        );
+                        final newLevel = PiggyPetService.levelFromProgress(
+                          updatedPiggy.progress,
+                        );
+
                         Navigator.pop(context); // đóng bottom sheet
+
+                        if (newLevel > oldLevel && context.mounted) {
+                          await showEvolutionDialog(
+                            context,
+                            oldLevel: oldLevel,
+                            newLevel: newLevel,
+                          );
+                        }
+
+                        if (!context.mounted) return;
 
                         Navigator.pop(context, {
                           'action': 'add_money',
@@ -388,7 +479,11 @@ class PiggyDetailScreen extends StatelessWidget {
               label: Text(piggy.status),
             ),
 
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
+
+            PiggyPetCard(piggy: piggy),
+
+            const SizedBox(height: 20),
 
             Card(
               shape: RoundedRectangleBorder(

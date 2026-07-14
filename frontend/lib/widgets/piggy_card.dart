@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/piggy.dart';
 import '../models/saving_plan.dart';
 import '../services/saving_plan_service.dart';
+import '../services/piggy_pet_service.dart';
 
 class PiggyCard extends StatelessWidget {
   final Piggy piggy;
@@ -47,6 +48,9 @@ class PiggyCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final savingPlan = SavingPlanService.calculate(piggy);
+    final petLevel = PiggyPetService.levelFromProgress(piggy.progress);
+    final petStage = PiggyPetService.stageNameForLevel(petLevel);
+    final petEmoji = PiggyPetService.stageEmojiForLevel(petLevel);
 
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
@@ -110,7 +114,28 @@ class PiggyCard extends StatelessWidget {
                 ],
               ),
 
-              const SizedBox(height: 18),
+              const SizedBox(height: 10),
+
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade50,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  '$petEmoji Cấp $petLevel • $petStage',
+                  style: const TextStyle(
+                    color: Colors.deepOrange,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 14),
 
               Text(
                 '${formatMoney(piggy.currentAmount)} / ${formatMoney(piggy.targetAmount)}',
